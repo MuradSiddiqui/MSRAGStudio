@@ -1,0 +1,74 @@
+"""Groq client: chat answers (gpt-oss-120b), fast tasks (gpt-oss-20b), vision (llama-4-scout)."""
+import base64
+import json
+
+import httpx
+
+from .config import settings
+
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+
+def _headers() -> dict:
+    return {"Authorization": f"Bearer {settings.groq_api_key}", "Content-Type": "application/json"}
+
+
+def chat(messages: list[dict], model: str | None = None, json_mode: bool = False) -> str:
+    body = {
+        "model": model or settings.groq_chat_model,
+        "messages": messages,
+        "temperature": 0.2,
+    }
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    with httpx.Client(timeout=120) as client:
+        resp = client.post(GROQ_URL, headers=_headers(), json=body)
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+
+
+def describe_image(path: str, hint: str = "") -> str:
+    """Vision description of an uploaded image so its content becomes searchable text."""
+    data = base64.b64encode(open(path, "rb").read()).decode()
+    ext = path.rsplit(".", 1)[-1].lower()
+    mime = "image/png" if ext == "png" else "image/jpeg"
+    prompt = (
+        "Describe this image in detail for a search index: every visible object, label, "
+        "dimension, number and text. List objects one per line as 'object: description'. "
+        + hint
+    )
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{data}"}},
+            ],
+        }
+    ]
+    return chat(messages, model=settings.groq_vision_model)
+
+
+def answer_with_citations(question: str, contexts: list[dict], mode_note: str = "") -> str:
+    context_text = "\n\n".join(
+        f"[{c['source']} · p.{c.get('page', '-')}] {c['text']}" for c in contexts
+    )
+    system = (
+        "You answer strictly from the provided context. Cite sources inline like "
+        "[file.pdf · p.3]. If the context does not contain the answer, say so honestly. "
+        + mode_note
+    )
+    return chat(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": f"Context:\n{context_text}\n\nQuestion: {question}"},
+        ]
+    )
+
+
+def parse_json(text: str) -> dict:
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        start, end = text.find("{"), text.rfind("}")
+        return json.loads(text[start : end + 1])
