@@ -27,6 +27,42 @@ def chat(messages: list[dict], model: str | None = None, json_mode: bool = False
         return resp.json()["choices"][0]["message"]["content"]
 
 
+def _vision_provider() -> str:
+    if settings.vision_provider != "auto":
+        return settings.vision_provider
+    return "gemini" if settings.gemini_api_key else "groq"
+
+
+def _describe_image_gemini(data: str, mime: str, prompt: str) -> str:
+    """Vision description via Google Gemini.
+
+    Groq's current catalogue for this account has no vision model at all
+    (verified 2026-10-28 in the console and via the API), so image
+    descriptions route to Gemini when its key is configured.
+    """
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.gemini_vision_model}:generateContent"
+    )
+    body = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt},
+                    {"inline_data": {"mime_type": mime, "data": data}},
+                ]
+            }
+        ]
+    }
+    with httpx.Client(timeout=120) as client:
+        resp = client.post(
+            url, headers={"x-goog-api-key": settings.gemini_api_key}, json=body
+        )
+        resp.raise_for_status()
+        parts = resp.json()["candidates"][0]["content"]["parts"]
+        return "".join(p.get("text", "") for p in parts)
+
+
 def describe_image(path: str, hint: str = "") -> str:
     """Vision description of an uploaded image so its content becomes searchable text."""
     data = base64.b64encode(open(path, "rb").read()).decode()
@@ -46,6 +82,8 @@ def describe_image(path: str, hint: str = "") -> str:
             ],
         }
     ]
+    if _vision_provider() == "gemini":
+        return _describe_image_gemini(data, mime, prompt)
     return chat(messages, model=settings.groq_vision_model)
 
 
