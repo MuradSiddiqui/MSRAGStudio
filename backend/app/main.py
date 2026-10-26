@@ -3,12 +3,19 @@ import shutil
 from pathlib import Path
 
 from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from . import modes, pipeline
 
 app = FastAPI(title="MS RAG Studio")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):3000|https://.*\.vercel\.app",
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "data" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
