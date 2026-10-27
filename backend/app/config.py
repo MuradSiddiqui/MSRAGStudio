@@ -13,7 +13,10 @@ class Settings(BaseSettings):
     groq_fast_model: str = "openai/gpt-oss-20b"
     groq_vision_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
     gemini_api_key: str = ""
-    gemini_vision_model: str = "gemini-2.5-flash"
+    # gemini-2.5-flash is closed to new users (verified 2026-10-28: API
+    # returns 404 and names gemini-3.8-flash as its replacement).
+    gemini_vision_model: str = "gemini-3.8-flash"
+    gemini_vision_fallbacks: str = "gemini-3-flash-preview,gemini-flash-latest,gemini-3.5-flash"
     vision_provider: str = "auto"  # auto | groq | gemini
 
     class Config:

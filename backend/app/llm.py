@@ -33,16 +33,10 @@ def _vision_provider() -> str:
     return "gemini" if settings.gemini_api_key else "groq"
 
 
-def _describe_image_gemini(data: str, mime: str, prompt: str) -> str:
-    """Vision description via Google Gemini.
-
-    Groq's current catalogue for this account has no vision model at all
-    (verified 2026-10-28 in the console and via the API), so image
-    descriptions route to Gemini when its key is configured.
-    """
+def _gemini_generate(model: str, data: str, mime: str, prompt: str) -> str:
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{settings.gemini_vision_model}:generateContent"
+        f"{model}:generateContent"
     )
     body = {
         "contents": [
@@ -52,7 +46,10 @@ def _describe_image_gemini(data: str, mime: str, prompt: str) -> str:
                     {"inline_data": {"mime_type": mime, "data": data}},
                 ]
             }
-        ]
+        ],
+        # Image description for indexing needs no reasoning; disabling
+        # thinking keeps it fast (verified live 2026-10-28).
+        "generationConfig": {"thinkingConfig": {"thinkingBudget": 0}},
     }
     with httpx.Client(timeout=120) as client:
         resp = client.post(
@@ -60,7 +57,37 @@ def _describe_image_gemini(data: str, mime: str, prompt: str) -> str:
         )
         resp.raise_for_status()
         parts = resp.json()["candidates"][0]["content"]["parts"]
-        return "".join(p.get("text", "") for p in parts)
+        # Skip internal "thought" parts on Gemini 3 models; keep answer text only.
+        return "".join(p.get("text", "") for p in parts if not p.get("thought"))
+
+
+def _describe_image_gemini(data: str, mime: str, prompt: str) -> str:
+    """Vision description via Google Gemini.
+
+    Groq's current catalogue for this account has no vision model at all
+    (verified 2026-10-28 in the console and via the API), so image
+    descriptions route to Gemini when its key is configured.
+
+    Models come and go for new accounts (gemini-2.5-flash already returns
+    404 for new users) and the newest Flash models intermittently return
+    503 under load, so try the configured model first, then the fallback
+    chain, and only fail when every model fails.
+    """
+    models = [settings.gemini_vision_model] + [
+        m.strip()
+        for m in settings.gemini_vision_fallbacks.split(",")
+        if m.strip() and m.strip() != settings.gemini_vision_model
+    ]
+    last_error: Exception | None = None
+    for model in models:
+        try:
+            return _gemini_generate(model, data, mime, prompt)
+        except httpx.HTTPError as exc:
+            # 404 (model closed to this account), 429/503 (load), timeouts,
+            # and model-specific 400s (e.g. generationConfig support) all
+            # mean: try the next model instead of failing the upload.
+            last_error = exc
+    raise RuntimeError(f"All Gemini vision models failed: {models}") from last_error
 
 
 def describe_image(path: str, hint: str = "") -> str:
