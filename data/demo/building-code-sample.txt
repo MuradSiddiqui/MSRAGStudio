@@ -1,0 +1,27 @@
+Sample Building Code Excerpt (Demo Document for MS RAG Studio)
+
+Section 4.2 Fire Protection Doors
+Doors along escape routes and between fire compartments must be fire-rated.
+Specifically, the following doors must be fire-rated (T30 or higher):
+- Doors between a stairwell and any corridor
+- Doors of basement and underground garage access points
+- Doors between different fire compartments on the same floor
+- Doors of technical rooms housing electrical switchgear
+
+Section 4.3 Escape Routes
+Every occupied floor must have at least two independent escape routes.
+Escape routes must remain free of obstacles at all times.
+The maximum travel distance from any point in a room to the nearest
+stairwell door must not exceed 35 metres.
+
+Section 5.1 Corridor Widths
+Corridors serving as escape routes must have a clear width of at least
+1.25 metres. In buildings with more than 200 occupants per floor, the
+clear width must be at least 1.50 metres. Door leaves opening into a
+corridor must not reduce the required clear width when open.
+
+Section 5.2 Windows and Ventilation
+Rooms without windows may only be used as storage if a mechanical
+ventilation system is installed. Smoke extraction openings in stairwells
+must have a free cross-section of at least 1.0 square metre at the top
+of the stairwell.

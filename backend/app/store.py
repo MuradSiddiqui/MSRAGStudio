@@ -12,7 +12,14 @@ _client = None
 def client() -> QdrantClient:
     global _client
     if _client is None:
-        _client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key or None)
+        # Explicit generous timeout: Qdrant Cloud over a proxied/slow link
+        # times out with the client defaults (seen live 2026-10-28).
+        _client = QdrantClient(
+            url=settings.qdrant_url,
+            api_key=settings.qdrant_api_key or None,
+            timeout=60,
+            check_compatibility=False,
+        )
     return _client
 
 
