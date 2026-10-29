@@ -1,14 +1,44 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import {
+  Bricolage_Grotesque,
+  Instrument_Serif,
+  Inter_Tight,
+  JetBrains_Mono,
+} from "next/font/google";
 import Link from "next/link";
+import SiteHeader from "@/components/SiteHeader";
+import { ThemeProvider, themeInitScript } from "@/components/ThemeProvider";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const display = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
+const body = Inter_Tight({ subsets: ["latin"], variable: "--font-body", display: "swap" });
+const serif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-serif",
+  display: "swap",
+});
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "MS RAG Studio",
+  title: {
+    default: "MS RAG Studio: cited answers from your documents",
+    template: "%s · MS RAG Studio",
+  },
   description:
     "Ask questions across your documents and images, and get answers with sources you can check.",
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f5f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0c0b" },
+  ],
 };
 
 export default function RootLayout({
@@ -17,41 +47,44 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans`}>
-        <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-            <Link href="/" className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
-                MS
-              </span>
-              <span className="text-base font-semibold tracking-tight">
-                MS RAG Studio
-              </span>
-            </Link>
-            <nav className="flex items-center gap-1 text-sm">
-              <Link
-                href="/"
-                className="rounded-md px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              >
-                Overview
-              </Link>
-              <Link
-                href="/studio"
-                className="rounded-md bg-indigo-600 px-3 py-2 font-medium text-white hover:bg-indigo-500"
-              >
-                Open the Studio
-              </Link>
-            </nav>
-          </div>
-        </header>
-        <main>{children}</main>
-        <footer className="border-t border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <p>MS RAG Studio: Basic, Multimodal and Agentic RAG in one workspace.</p>
-            <p>Next.js · FastAPI · Qdrant · Groq · BGE · n8n</p>
-          </div>
-        </footer>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${display.variable} ${body.variable} ${serif.variable} ${mono.variable}`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="flex min-h-screen flex-col">
+        <ThemeProvider>
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-canvas"
+          >
+            Skip to content
+          </a>
+          <SiteHeader />
+          <main id="main" className="flex-1">
+            {children}
+          </main>
+          <footer className="border-t border-line">
+            <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <p>
+                <span className="font-display font-semibold text-ink">MS RAG Studio</span>{" "}
+                · Basic, Multimodal and Agentic RAG in one workspace.
+              </p>
+              <div className="flex items-center gap-4">
+                <Link href="/studio" className="hover:text-ink">
+                  Studio
+                </Link>
+                <Link href="/#how-it-works" className="hover:text-ink">
+                  How it works
+                </Link>
+                <span className="font-mono text-xs text-faint">© {new Date().getFullYear()}</span>
+              </div>
+            </div>
+          </footer>
+        </ThemeProvider>
       </body>
     </html>
   );

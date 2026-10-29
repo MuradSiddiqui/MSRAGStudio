@@ -8,12 +8,28 @@ from .config import settings
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
+_MIME = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
+
+
+class LLMError(RuntimeError):
+    """Upstream model call failed; message is safe to show to the user."""
+
 
 def _headers() -> dict:
     return {"Authorization": f"Bearer {settings.groq_api_key}", "Content-Type": "application/json"}
 
 
+def _upstream_message(resp: httpx.Response) -> str:
+    try:
+        err = resp.json().get("error", {})
+        return err.get("message") if isinstance(err, dict) else str(err)
+    except ValueError:
+        return resp.text[:200]
+
+
 def chat(messages: list[dict], model: str | None = None, json_mode: bool = False) -> str:
+    if not settings.groq_api_key:
+        raise LLMError("MSRAG_GROQ_API_KEY is not set in backend/.env")
     body = {
         "model": model or settings.groq_chat_model,
         "messages": messages,
@@ -21,10 +37,20 @@ def chat(messages: list[dict], model: str | None = None, json_mode: bool = False
     }
     if json_mode:
         body["response_format"] = {"type": "json_object"}
-    with httpx.Client(timeout=120) as client:
-        resp = client.post(GROQ_URL, headers=_headers(), json=body)
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+    try:
+        with httpx.Client(timeout=120) as client:
+            resp = client.post(GROQ_URL, headers=_headers(), json=body)
+    except httpx.HTTPError as exc:
+        raise LLMError(f"Could not reach Groq: {exc}") from exc
+    if resp.status_code >= 400:
+        raise LLMError(f"Groq returned {resp.status_code}: {_upstream_message(resp)}")
+    return resp.json()["choices"][0]["message"]["content"] or ""
+
+
+def cite_label(c: dict) -> str:
+    if c.get("kind") == "image":
+        return f"[{c['source']} · image]"
+    return f"[{c['source']} · p.{c.get('page', '-')}]"
 
 
 def _vision_provider() -> str:
@@ -82,19 +108,20 @@ def _describe_image_gemini(data: str, mime: str, prompt: str) -> str:
     for model in models:
         try:
             return _gemini_generate(model, data, mime, prompt)
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, KeyError, IndexError) as exc:
             # 404 (model closed to this account), 429/503 (load), timeouts,
             # and model-specific 400s (e.g. generationConfig support) all
             # mean: try the next model instead of failing the upload.
             last_error = exc
-    raise RuntimeError(f"All Gemini vision models failed: {models}") from last_error
+    raise LLMError(f"All Gemini vision models failed: {', '.join(models)}") from last_error
 
 
 def describe_image(path: str, hint: str = "") -> str:
     """Vision description of an uploaded image so its content becomes searchable text."""
-    data = base64.b64encode(open(path, "rb").read()).decode()
+    with open(path, "rb") as fh:
+        data = base64.b64encode(fh.read()).decode()
     ext = path.rsplit(".", 1)[-1].lower()
-    mime = "image/png" if ext == "png" else "image/jpeg"
+    mime = _MIME.get(ext, "image/jpeg")
     prompt = (
         "Describe this image in detail for a search index: every visible object, label, "
         "dimension, number and text. List objects one per line as 'object: description'. "
@@ -115,20 +142,27 @@ def describe_image(path: str, hint: str = "") -> str:
 
 
 def answer_with_citations(question: str, contexts: list[dict], mode_note: str = "") -> str:
-    context_text = "\n\n".join(
-        f"[{c['source']} · p.{c.get('page', '-')}] {c['text']}" for c in contexts
-    )
+    if not contexts:
+        return (
+            "I couldn't find anything in the index for this question. "
+            "Upload a document or image that covers it, then ask again."
+        )
+    context_text = "\n\n".join(f"{cite_label(c)} {c['text']}" for c in contexts)
     system = (
-        "You answer strictly from the provided context. Cite sources inline like "
-        "[file.pdf · p.3]. If the context does not contain the answer, say so honestly. "
+        "You answer strictly from the provided context. Cite sources inline exactly as they "
+        "are labelled in the context, like [file.pdf · p.3] or [plan.png · image]. "
+        "Use Markdown for structure (short paragraphs, bullet lists, tables when useful). "
+        "If the context does not contain the answer, say so honestly. "
         + mode_note
     )
-    return chat(
+    answer = chat(
         [
             {"role": "system", "content": system},
             {"role": "user", "content": f"Context:\n{context_text}\n\nQuestion: {question}"},
         ]
     )
+    # gpt-oss sometimes emits its native 【…】 citation brackets.
+    return answer.replace("【", "[").replace("】", "]")
 
 
 def parse_json(text: str) -> dict:
@@ -136,4 +170,9 @@ def parse_json(text: str) -> dict:
         return json.loads(text)
     except json.JSONDecodeError:
         start, end = text.find("{"), text.rfind("}")
-        return json.loads(text[start : end + 1])
+        if start == -1 or end <= start:
+            return {}
+        try:
+            return json.loads(text[start : end + 1])
+        except json.JSONDecodeError:
+            return {}

@@ -17,7 +17,7 @@ def ingest_file(path: str) -> dict:
                 "kind": "image",
                 "text": description,
             }
-        ]
+        ] if description.strip() else []
     else:
         pages = extract.extract_text(path)
         chunks = [{**c, "kind": "text"} for c in chunking.chunk_pages(pages, name)]
@@ -25,5 +25,6 @@ def ingest_file(path: str) -> dict:
         return {"file": name, "chunks": 0}
     vectors = embeddings.embed([c["text"] for c in chunks])
     store.ensure_collection(len(vectors[0]))
+    store.delete_source(name)
     count = store.upsert(chunks, vectors)
     return {"file": name, "chunks": count}

@@ -1,4 +1,13 @@
 import Link from "next/link";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  FileText,
+  Image as ImageIcon,
+  ListChecks,
+  ScanSearch,
+} from "lucide-react";
+import HowItWorks from "@/components/HowItWorks";
 
 const DEMO_HREF = `/studio?mode=agentic&q=${encodeURIComponent(
   "Which doors must be fire-rated?"
@@ -7,300 +16,285 @@ const DEMO_HREF = `/studio?mode=agentic&q=${encodeURIComponent(
 const MODE_CARDS = [
   {
     mode: "basic" as const,
-    name: "Basic RAG",
-    accent: "indigo",
-    dot: "bg-indigo-500",
-    titleText: "text-indigo-600",
-    ring: "hover:border-indigo-300",
+    index: "01",
+    name: "Basic",
+    dot: "bg-basic",
+    text: "text-basic",
+    Icon: FileText,
     description:
-      "Fast answers from text documents. Upload PDFs, Word documents or text files and ask in plain language.",
-    points: [
-      "Top matching passages, ranked by relevance",
-      "Citations down to the page",
-      "Fits manuals, specifications and reports",
-    ],
+      "Fast answers from text documents. Upload PDFs, Word files or notes and ask in plain language.",
+    points: ["Top passages, ranked by relevance", "Citations down to the page", "Manuals, specs and reports"],
   },
   {
     mode: "multimodal" as const,
-    name: "Multimodal RAG",
-    accent: "violet",
-    dot: "bg-violet-500",
-    titleText: "text-violet-600",
-    ring: "hover:border-violet-300",
+    index: "02",
+    name: "Multimodal",
+    dot: "bg-multi",
+    text: "text-multi",
+    Icon: ScanSearch,
     description:
-      "Text and images in one index. A vision model reads plans, drawings and scans, so you can ask about what is drawn, not only what is written.",
-    points: [
-      "Images cited by file, like [plan.png · image]",
-      "Floor plans, drawings and scanned pages",
-      "Same cited answer format as text mode",
-    ],
+      "Text and images in one index. A vision model reads plans, drawings and scans so you can ask about what is drawn.",
+    points: ["Images cited as [plan.png · image]", "Floor plans, drawings, scans", "Same cited answer format"],
   },
   {
     mode: "agentic" as const,
-    name: "Agentic RAG",
-    accent: "emerald",
-    dot: "bg-emerald-500",
-    titleText: "text-emerald-600",
-    ring: "hover:border-emerald-300",
+    index: "03",
+    name: "Agentic",
+    dot: "bg-agentic",
+    text: "text-agentic",
+    Icon: ListChecks,
     description:
-      "For questions where missing one item means a wrong answer. The agent plans sub-questions, retrieves for each, then checks coverage before replying.",
-    points: [
-      "Plan steps shown with hit counts",
-      "Coverage report over the whole index",
-      "Built for list-all questions",
-    ],
-  },
-];
-
-const STEPS = [
-  {
-    title: "1. Upload",
-    text: "Documents are split into passages, embedded with BGE and stored in Qdrant. Images go through a vision model first and are indexed as descriptions.",
-  },
-  {
-    title: "2. Ask",
-    text: "Pick Basic, Multimodal or Agentic mode and ask in plain language. Each mode searches the same index in a different way.",
-  },
-  {
-    title: "3. Check the sources",
-    text: "Every answer lists the files and pages it came from. Expand any source to read the exact passage behind the claim.",
-  },
-  {
-    title: "4. Take the report",
-    text: "Download the answer as a Markdown report, or copy it, with the question, mode, sources and coverage included.",
+      "For questions where missing one item means a wrong answer. Plans sub-questions, retrieves for each, then reports coverage.",
+    points: ["Plan steps with hit counts", "Coverage across the whole index", "Built for list-all questions"],
   },
 ];
 
 const STACK = [
-  { name: "Next.js", role: "Frontend and Studio UI" },
-  { name: "FastAPI", role: "Upload, ask and report API" },
-  { name: "Qdrant", role: "Vector search over chunks" },
-  { name: "Groq", role: "Answers (gpt-oss-120b), planning (gpt-oss-20b), vision (Llama 4 Scout)" },
-  { name: "BGE embeddings", role: "bge-small-en-v1.5, run locally" },
-  { name: "n8n", role: "Orchestration: ingestion workflows, scheduled re-indexing, report delivery" },
+  { name: "Next.js", role: "Studio UI" },
+  { name: "FastAPI", role: "Upload, ask, report API" },
+  { name: "Qdrant", role: "Vector search" },
+  { name: "Groq", role: "gpt-oss-120b answers, gpt-oss-20b planning" },
+  { name: "Gemini / Llama 4", role: "Image understanding" },
+  { name: "BGE small", role: "Local embeddings" },
+  { name: "n8n", role: "Ingestion and scheduled re-indexing" },
 ];
+
+function Cite({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="mx-0.5 inline-flex items-center rounded-md border border-line bg-raised px-1.5 py-px align-baseline font-mono text-[11px] text-muted">
+      {children}
+    </span>
+  );
+}
 
 export default function Home() {
   return (
     <div>
       {/* Hero */}
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:py-20">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-              Three retrieval modes, one workspace
-            </p>
-            <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-5xl">
-              Ask your documents anything. Check every answer.
-            </h1>
-            <p className="mt-4 max-w-lg text-lg leading-relaxed text-slate-600">
-              MS RAG Studio reads your PDFs, documents and images, answers in
-              plain language, and shows the exact page or image behind every
-              claim. For list-all questions, Agentic mode checks the whole
-              index instead of stopping at the top few matches.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/studio"
-                className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-500"
-              >
-                Open the Studio
-              </Link>
-              <a
-                href="#how-it-works"
-                className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
-                How it works
-              </a>
-            </div>
+      <section className="relative overflow-hidden">
+        <div className="bg-grid pointer-events-none absolute inset-0" aria-hidden="true" />
+        <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 lg:pt-24">
+          <Link
+            href="/studio"
+            className="group inline-flex animate-fade-up items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-3 text-xs text-muted hover:text-ink"
+          >
+            <span className="rounded-full bg-accent px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-accent-ink">
+              New
+            </span>
+            Agentic mode now reports coverage
+            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+
+          <h1 className="mt-6 max-w-4xl animate-fade-up font-display text-[clamp(2.6rem,7vw,5.25rem)] font-semibold leading-[0.95] tracking-[-0.035em] [animation-delay:60ms]">
+            Answers you can{" "}
+            <span className="font-serif font-normal italic tracking-normal">trace back</span>{" "}
+            to the page.
+          </h1>
+          <p className="mt-6 max-w-xl animate-fade-up text-lg leading-relaxed text-muted [animation-delay:120ms]">
+            Drop in PDFs, Word files and drawings. Ask in plain language. Every sentence in
+            the answer points to the exact page or image it came from.
+          </p>
+          <div className="mt-8 flex animate-fade-up flex-wrap items-center gap-3 [animation-delay:180ms]">
+            <Link href="/studio" className="btn-primary px-5 py-2.5">
+              Open the Studio <ArrowUpRight className="h-4 w-4" />
+            </Link>
+            <Link href={DEMO_HREF} className="btn-ghost px-5 py-2.5">
+              Try the fire-door demo
+            </Link>
           </div>
 
-          {/* Static preview of a Studio answer */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Demo answer
-            </p>
-            <p className="mt-2 text-sm font-medium text-slate-800">
-              Which doors must be fire-rated?
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">
-              Based on the code excerpt and the ground floor plan, the
-              stairwell doors, the corridor doors on both floors and the plant
-              room door must be fire-rated.{" "}
-              <span className="rounded bg-white px-1.5 py-0.5 text-[13px] font-medium text-slate-500 ring-1 ring-slate-200">
-                [Building code excerpt.pdf · p.4]
-              </span>{" "}
-              <span className="rounded bg-white px-1.5 py-0.5 text-[13px] font-medium text-slate-500 ring-1 ring-slate-200">
-                [Ground floor plan.png · image]
-              </span>
-            </p>
-            <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
-              Coverage: 4 plan steps, 23 chunks considered, 2 sources. Nothing
-              in the index was skipped.
+          {/* Product preview */}
+          <div className="mt-16 animate-fade-up [animation-delay:260ms]">
+            <div className="card overflow-hidden shadow-[0_30px_80px_-40px_rgb(0_0_0/0.35)]">
+              <div className="flex items-center gap-2 border-b border-line px-4 py-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-line" />
+                <span className="h-2.5 w-2.5 rounded-full bg-line" />
+                <span className="h-2.5 w-2.5 rounded-full bg-line" />
+                <span className="ml-3 font-mono text-[11px] text-faint">studio / agentic</span>
+              </div>
+              <div className="grid lg:grid-cols-[260px_1fr]">
+                <div className="hidden space-y-2 border-r border-line p-4 lg:block">
+                  <p className="eyebrow mb-3">Library</p>
+                  {[
+                    { name: "Building code excerpt.pdf", meta: "14 chunks", Icon: FileText },
+                    { name: "Ground floor plan.png", meta: "image", Icon: ImageIcon },
+                    { name: "Door schedule.docx", meta: "6 chunks", Icon: FileText },
+                  ].map(({ name, meta, Icon }) => (
+                    <div key={name} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
+                      <Icon className="h-4 w-4 shrink-0 text-muted" />
+                      <span className="min-w-0 flex-1 truncate text-[13px]">{name}</span>
+                      <span className="font-mono text-[10px] text-faint">{meta}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-5 sm:p-7">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-agentic/10 px-2.5 py-1 font-mono text-[11px] font-medium text-agentic">
+                      <span className="h-1.5 w-1.5 rounded-full bg-agentic" /> Agentic
+                    </span>
+                    <span className="font-mono text-[11px] text-faint">4.2s · 3 sources</span>
+                  </div>
+                  <p className="mt-4 font-display text-xl font-semibold tracking-tight">
+                    Which doors must be fire-rated?
+                  </p>
+                  <p className="mt-3 max-w-2xl text-[15px] leading-7 text-ink/90">
+                    Fire-rated doors (T30 or higher) are required between stairwells and
+                    corridors <Cite>Building code excerpt.pdf · p.4</Cite>, at basement and
+                    garage access points, and for the plant room shown on the ground floor{" "}
+                    <Cite>Ground floor plan.png · image</Cite>.
+                  </p>
+                  <div className="mt-5 grid max-w-lg grid-cols-3 gap-2">
+                    {[
+                      ["4", "plan steps"],
+                      ["23", "chunks read"],
+                      ["3", "sources"],
+                    ].map(([value, label]) => (
+                      <div key={label} className="rounded-xl bg-raised px-3 py-2.5">
+                        <p className="font-display text-xl font-semibold">{value}</p>
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                          {label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Modes */}
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Pick the mode that fits the question
-        </h2>
-        <p className="mt-2 max-w-2xl text-slate-600">
-          All three modes search the same uploaded files. They differ in how
-          much of the index they read before answering.
-        </p>
-        <div className="mt-8 grid gap-5 md:grid-cols-3">
-          {MODE_CARDS.map((card) => (
-            <Link
-              key={card.mode}
-              href={`/studio?mode=${card.mode}`}
-              className={`group rounded-2xl border border-slate-200 bg-white p-5 transition-colors ${card.ring}`}
-            >
-              <span className={`h-2.5 w-2.5 rounded-full ${card.dot} block`} />
-              <h3 className={`mt-3 text-lg font-semibold ${card.titleText}`}>
-                {card.name}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                {card.description}
-              </p>
-              <ul className="mt-4 space-y-1.5 text-sm text-slate-600">
-                {card.points.map((point) => (
-                  <li key={point} className="flex gap-2">
-                    <span className="text-slate-400">·</span>
-                    <span>{point}</span>
-                  </li>
-                ))}
-              </ul>
-              <span className="mt-5 inline-block text-sm font-medium text-slate-700 group-hover:underline">
-                Try {card.name} in the Studio
-              </span>
-            </Link>
-          ))}
+      <section id="modes" className="scroll-mt-20 border-t border-line">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="eyebrow">Three modes, one index</p>
+              <h2 className="mt-3 max-w-xl font-display text-4xl font-semibold tracking-tight">
+                Pick the mode that fits <span className="font-serif font-normal italic">the question.</span>
+              </h2>
+            </div>
+            <p className="max-w-sm text-muted">
+              All three search the same uploaded files. They differ in how much of the
+              index they read before they answer.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
+            {MODE_CARDS.map(({ mode, index, name, dot, text, Icon, description, points }) => (
+              <Link
+                key={mode}
+                href={`/studio?mode=${mode}`}
+                className="group flex flex-col bg-surface p-6 transition-colors hover:bg-raised/60 sm:p-7"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs text-faint">{index}</span>
+                  <Icon className={`h-5 w-5 ${text}`} strokeWidth={1.75} />
+                </div>
+                <h3 className="mt-10 flex items-center gap-2 font-display text-2xl font-semibold tracking-tight">
+                  <span className={`h-2 w-2 rounded-full ${dot}`} />
+                  {name}
+                </h3>
+                <p className="mt-3 text-[15px] leading-relaxed text-muted">{description}</p>
+                <ul className="mt-6 space-y-2 border-t border-line pt-5 text-sm">
+                  {points.map((point) => (
+                    <li key={point} className="flex gap-2.5">
+                      <span className={`mt-2 h-1 w-1 shrink-0 rounded-full ${dot}`} />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+                <span className="mt-auto inline-flex items-center gap-1.5 pt-8 text-sm font-medium">
+                  Try {name}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="border-y border-slate-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-          <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step) => (
-              <div
-                key={step.title}
-                className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
-              >
-                <h3 className="text-base font-semibold text-slate-900">
-                  {step.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  {step.text}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <HowItWorks />
 
       {/* Demo walkthrough */}
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <div className="grid items-start gap-8 lg:grid-cols-2">
+      <section className="border-t border-line">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Example: building code plus a floor plan
+            <p className="eyebrow">Example</p>
+            <h2 className="mt-3 font-display text-4xl font-semibold tracking-tight">
+              A building code and a floor plan, <span className="font-serif font-normal italic">read together.</span>
             </h2>
-            <p className="mt-3 leading-relaxed text-slate-600">
-              A common case in architecture work: the rules sit in a code
-              document, but half the answer is drawn in a plan. Upload both,
-              and the studio reads them together. The code excerpt says which
-              door types need a fire rating; the plan shows where those doors
-              actually are.
+            <p className="mt-5 leading-relaxed text-muted">
+              The rules sit in a code document, but half the answer is drawn in a plan.
+              Upload both: the code says which door types need a fire rating, and the
+              plan shows where those doors actually are.
             </p>
-            <p className="mt-3 leading-relaxed text-slate-600">
-              Agentic mode splits the question into sub-questions, one per
-              door category, retrieves for each, and then reports how much of
-              the index it covered, so a missing door is visible as a gap in
-              coverage rather than a silent omission.
+            <p className="mt-3 leading-relaxed text-muted">
+              Agentic mode splits the question into one sub-question per door category
+              and reports how much of the index it covered, so a missing door shows up
+              as a gap instead of a silent omission.
             </p>
-            <Link
-              href={DEMO_HREF}
-              className="mt-5 inline-block rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-500"
-            >
-              Open this demo in the Studio
+            <Link href={DEMO_HREF} className="btn-primary mt-7 px-5 py-2.5">
+              Open this demo <ArrowUpRight className="h-4 w-4" />
             </Link>
           </div>
           <div className="space-y-3">
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-500 text-[10px] font-bold text-white">
-                DOC
-              </span>
-              <div>
-                <p className="text-sm font-medium text-slate-800">
-                  Building code excerpt.pdf
-                </p>
-                <p className="text-xs text-slate-500">
-                  Text document, indexed as passages with page numbers
-                </p>
+            {[
+              { Icon: FileText, name: "Building code excerpt.pdf", meta: "Indexed as passages with page numbers", tone: "text-basic bg-basic/10" },
+              { Icon: ImageIcon, name: "Ground floor plan.png", meta: "Read by the vision model, indexed as a description", tone: "text-multi bg-multi/10" },
+            ].map(({ Icon, name, meta, tone }) => (
+              <div key={name} className="card flex items-center gap-4 px-4 py-4">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
+                  <Icon className="h-5 w-5" strokeWidth={1.75} />
+                </span>
+                <div>
+                  <p className="text-sm font-medium">{name}</p>
+                  <p className="text-xs text-muted">{meta}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-violet-500 text-[10px] font-bold text-white">
-                IMG
-              </span>
-              <div>
-                <p className="text-sm font-medium text-slate-800">
-                  Ground floor plan.png
-                </p>
-                <p className="text-xs text-slate-500">
-                  Image, read by the vision model and indexed as a description
-                </p>
-              </div>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Question
-              </p>
-              <p className="mt-1 text-sm font-medium text-slate-800">
-                Which doors must be fire-rated?
-              </p>
+            ))}
+            <div className="card px-4 py-4">
+              <p className="eyebrow">Question</p>
+              <p className="mt-2 font-display text-lg font-semibold">Which doors must be fire-rated?</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stack */}
-      <section className="border-t border-slate-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-          <h2 className="text-2xl font-semibold tracking-tight">Tech stack</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Stack + CTA */}
+      <section className="border-t border-line">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <p className="eyebrow">Under the hood</p>
+          <div className="mt-6 flex flex-wrap gap-2">
             {STACK.map((item) => (
-              <div
+              <span
                 key={item.name}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+                className="inline-flex items-baseline gap-2 rounded-full border border-line bg-surface px-4 py-2 text-sm"
               >
-                <p className="text-sm font-semibold text-slate-900">
-                  {item.name}
-                </p>
-                <p className="mt-0.5 text-sm text-slate-600">{item.role}</p>
-              </div>
+                <span className="font-medium">{item.name}</span>
+                <span className="text-xs text-muted">{item.role}</span>
+              </span>
             ))}
           </div>
-          <div className="mt-10 rounded-2xl bg-indigo-600 px-6 py-8 text-center">
-            <h3 className="text-xl font-semibold text-white">
-              Bring your own documents
-            </h3>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-indigo-100">
-              Upload a specification, a plan, or a folder of reports and start
-              asking. Answers stay tied to the sources, so you can verify them
-              before you use them.
-            </p>
-            <Link
-              href="/studio"
-              className="mt-5 inline-block rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
-            >
-              Open the Studio
-            </Link>
+
+          <div className="relative mt-16 overflow-hidden rounded-3xl bg-ink px-6 py-14 text-canvas sm:px-12">
+            <div
+              className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-accent/30 blur-3xl"
+              aria-hidden="true"
+            />
+            <div className="relative max-w-2xl">
+              <h3 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+                Bring your own <span className="font-serif font-normal italic">documents.</span>
+              </h3>
+              <p className="mt-4 max-w-lg text-canvas/70">
+                Upload a spec, a plan or a folder of reports and start asking. Answers stay
+                tied to their sources, so you can verify before you use them.
+              </p>
+              <Link href="/studio" className="btn-accent mt-8 px-5 py-2.5">
+                Open the Studio <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>

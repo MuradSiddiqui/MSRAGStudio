@@ -1,34 +1,97 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { UploadedFile } from "@/lib/api";
+import {
+  AlertCircle,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  RefreshCw,
+  RotateCcw,
+  Trash2,
+  UploadCloud,
+  X,
+} from "lucide-react";
+import {
+  ACCEPTED_EXTENSIONS,
+  MAX_UPLOAD_MB,
+  isImageName,
+  type IndexedDocument,
+} from "@/lib/api";
+
+export interface UploadItem {
+  id: string;
+  name: string;
+  status: "uploading" | "error";
+  error?: string;
+}
 
 interface Props {
-  files: UploadedFile[];
+  documents: IndexedDocument[];
+  documentsState: "loading" | "ready" | "error";
+  uploads: UploadItem[];
+  recent: Set<string>;
   onFiles: (files: File[]) => void;
-  onRemove: (name: string) => void;
+  onRetry: (id: string) => void;
+  onDismiss: (id: string) => void;
+  onDelete: (name: string) => Promise<void>;
+  onRefresh: () => void;
 }
 
-/** Extensions the backend extractor actually handles (extract.py / pipeline.py). */
-const ACCEPT = ".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp";
-const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp"];
-
-function isImageName(name: string) {
-  const lower = name.toLowerCase();
-  return IMAGE_EXTS.some((ext) => lower.endsWith(ext));
+function FileGlyph({ name, kind }: { name: string; kind?: string }) {
+  const image = kind === "image" || isImageName(name);
+  return (
+    <span
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+        image ? "bg-multi/10 text-multi" : "bg-basic/10 text-basic"
+      }`}
+    >
+      {image ? (
+        <ImageIcon className="h-4 w-4" strokeWidth={1.75} />
+      ) : (
+        <FileText className="h-4 w-4" strokeWidth={1.75} />
+      )}
+    </span>
+  );
 }
 
-export default function UploadZone({ files, onFiles, onRemove }: Props) {
+export default function UploadZone({
+  documents,
+  documentsState,
+  uploads,
+  recent,
+  onFiles,
+  onRetry,
+  onDismiss,
+  onDelete,
+  onRefresh,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
-    if (e.dataTransfer.files.length > 0) {
-      onFiles(Array.from(e.dataTransfer.files));
+    if (e.dataTransfer.files.length > 0) onFiles(Array.from(e.dataTransfer.files));
+  };
+
+  const handleDelete = async (name: string) => {
+    setDeleting(name);
+    try {
+      await onDelete(name);
+    } finally {
+      setDeleting(null);
+      setConfirming(null);
     }
   };
+
+  const visible = filter
+    ? documents.filter((d) => d.name.toLowerCase().includes(filter.toLowerCase()))
+    : documents;
+  const totalChunks = documents.reduce((sum, d) => sum + d.chunks, 0);
 
   return (
     <div>
@@ -37,32 +100,42 @@ export default function UploadZone({ files, onFiles, onRemove }: Props) {
         tabIndex={0}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
         }}
         onDragOver={(e) => {
           e.preventDefault();
           setDragging(true);
         }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
+        }}
         onDrop={handleDrop}
-        className={`cursor-pointer rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors ${
+        className={`group cursor-pointer rounded-xl border border-dashed px-4 py-6 text-center transition-colors ${
           dragging
-            ? "border-indigo-400 bg-indigo-50"
-            : "border-slate-300 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/50"
+            ? "border-ink bg-raised"
+            : "border-line hover:border-faint hover:bg-raised/50"
         }`}
       >
-        <p className="text-sm font-medium text-slate-700">
-          Drop files here, or click to browse
+        <UploadCloud
+          className={`mx-auto h-6 w-6 transition-transform ${
+            dragging ? "-translate-y-0.5 text-ink" : "text-muted group-hover:-translate-y-0.5"
+          }`}
+          strokeWidth={1.5}
+        />
+        <p className="mt-2 text-sm font-medium">
+          {dragging ? "Release to upload" : "Drop files or click to browse"}
         </p>
-        <p className="mt-1 text-xs text-slate-500">
-          PDF, DOCX, TXT, or images (PNG, JPG, WebP). Images are read by the
-          vision model and indexed as text.
+        <p className="mt-1 text-xs text-muted">
+          PDF, DOCX, TXT, MD or images · up to {MAX_UPLOAD_MB} MB
         </p>
         <input
           ref={inputRef}
           type="file"
           multiple
-          accept={ACCEPT}
+          accept={ACCEPTED_EXTENSIONS.join(",")}
           className="hidden"
           onChange={(e) => {
             if (e.target.files && e.target.files.length > 0) {
@@ -73,55 +146,168 @@ export default function UploadZone({ files, onFiles, onRemove }: Props) {
         />
       </div>
 
-      {files.length > 0 && (
-        <ul className="mt-3 space-y-2">
-          {files.map((f) => (
+      {uploads.length > 0 && (
+        <ul className="mt-3 space-y-1.5" aria-live="polite">
+          {uploads.map((u) => (
             <li
-              key={f.name}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2"
+              key={u.id}
+              className={`flex animate-fade-up items-center gap-2.5 rounded-xl border px-2.5 py-2 ${
+                u.status === "error" ? "border-danger/30 bg-danger/5" : "border-line bg-surface"
+              }`}
             >
-              <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white ${
-                  isImageName(f.name) ? "bg-violet-500" : "bg-indigo-500"
-                }`}
-              >
-                {isImageName(f.name) ? "IMG" : "DOC"}
-              </span>
+              <FileGlyph name={u.name} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-slate-800">
-                  {f.name}
+                <span className="block truncate text-[13px] font-medium" title={u.name}>
+                  {u.name}
                 </span>
-                <span className="block text-xs text-slate-500">
-                  {f.status === "uploading" && "Uploading and indexing..."}
-                  {f.status === "done" &&
-                    (f.chunks && f.chunks > 0
-                      ? `Indexed, ${f.chunks} chunk${f.chunks === 1 ? "" : "s"}`
-                      : "Uploaded, but no readable content was found")}
-                  {f.status === "error" && (f.error ?? "Upload failed")}
+                <span
+                  className={`block text-xs ${u.status === "error" ? "text-danger" : "text-muted"}`}
+                >
+                  {u.status === "uploading"
+                    ? isImageName(u.name)
+                      ? "Reading image and indexing…"
+                      : "Extracting and indexing…"
+                    : u.error ?? "Upload failed"}
                 </span>
               </span>
-              {f.status === "uploading" && (
-                <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+              {u.status === "uploading" ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted" />
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onRetry(u.id)}
+                    className="rounded-md p-1.5 text-muted hover:bg-raised hover:text-ink"
+                    aria-label={`Retry ${u.name}`}
+                    title="Retry"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDismiss(u.id)}
+                    className="rounded-md p-1.5 text-muted hover:bg-raised hover:text-ink"
+                    aria-label={`Dismiss ${u.name}`}
+                    title="Dismiss"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </>
               )}
-              {f.status === "done" && (
-                <span className="shrink-0 text-sm text-emerald-600">✓</span>
-              )}
-              {f.status === "error" && (
-                <span className="shrink-0 text-sm text-red-500">!</span>
-              )}
-              <button
-                type="button"
-                onClick={() => onRemove(f.name)}
-                title="Remove from this list. The backend has no delete endpoint, so chunks already indexed stay in the index."
-                className="shrink-0 rounded px-1.5 py-0.5 text-sm text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                aria-label={`Remove ${f.name} from list`}
-              >
-                ×
-              </button>
             </li>
           ))}
         </ul>
       )}
+
+      <div className="mt-5 flex items-center justify-between">
+        <p className="eyebrow">
+          Library{" "}
+          {documentsState === "ready" && (
+            <span className="text-faint">
+              · {documents.length} file{documents.length === 1 ? "" : "s"} · {totalChunks} chunks
+            </span>
+          )}
+        </p>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="rounded-md p-1 text-muted hover:bg-raised hover:text-ink"
+          aria-label="Refresh library"
+          title="Refresh"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${documentsState === "loading" ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {documents.length > 5 && (
+        <input
+          type="search"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter files…"
+          className="mt-2 w-full rounded-lg border border-line bg-canvas px-3 py-1.5 text-sm outline-none placeholder:text-faint focus:border-faint"
+        />
+      )}
+
+      <div className="mt-2">
+        {documentsState === "loading" && documents.length === 0 && (
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="skeleton h-11" />
+            ))}
+          </div>
+        )}
+        {documentsState === "error" && documents.length === 0 && (
+          <p className="flex items-center gap-2 rounded-xl bg-raised px-3 py-3 text-xs text-muted">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            Couldn&apos;t load the library. Is the backend running?
+          </p>
+        )}
+        {documentsState === "ready" && documents.length === 0 && (
+          <p className="rounded-xl bg-raised px-3 py-4 text-center text-xs text-muted">
+            Nothing indexed yet. Your first upload will appear here.
+          </p>
+        )}
+        {visible.length > 0 && (
+          <ul className="-mx-1.5 max-h-[340px] space-y-0.5 overflow-y-auto">
+            {visible.map((d) => (
+              <li
+                key={d.name}
+                className="group flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 hover:bg-raised/70"
+              >
+                <FileGlyph name={d.name} kind={d.kind} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-[13px] font-medium" title={d.name}>
+                      {d.name}
+                    </span>
+                    {recent.has(d.name) && (
+                      <span className="shrink-0 rounded bg-accent px-1 font-mono text-[9px] font-semibold uppercase text-accent-ink">
+                        new
+                      </span>
+                    )}
+                  </span>
+                  <span className="block font-mono text-[11px] text-faint">
+                    {d.kind === "image" ? "image" : `${d.chunks} chunk${d.chunks === 1 ? "" : "s"}`}
+                  </span>
+                </span>
+                {confirming === d.name ? (
+                  <span className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(d.name)}
+                      disabled={deleting === d.name}
+                      className="rounded-md bg-danger px-2 py-1 text-[11px] font-medium text-white disabled:opacity-60"
+                    >
+                      {deleting === d.name ? "Removing…" : "Remove"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(null)}
+                      className="rounded-md px-1.5 py-1 text-[11px] text-muted hover:text-ink"
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(d.name)}
+                    className="shrink-0 rounded-md p-1.5 text-faint opacity-0 transition-opacity hover:bg-surface hover:text-danger focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                    aria-label={`Remove ${d.name} from the index`}
+                    title="Remove from index"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {filter && visible.length === 0 && documents.length > 0 && (
+          <p className="px-1 py-3 text-xs text-muted">No files match “{filter}”.</p>
+        )}
+      </div>
     </div>
   );
 }

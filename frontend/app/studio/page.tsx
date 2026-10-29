@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Studio from "@/components/Studio";
 
 export const metadata: Metadata = {
-  title: "Studio · MS RAG Studio",
+  title: "Studio",
   description:
     "Upload documents and images, ask in three retrieval modes, and download cited reports.",
 };
@@ -12,8 +12,12 @@ export default function StudioPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-slate-500 sm:px-6">
-          Loading the Studio...
+        <div className="mx-auto max-w-6xl px-4 pt-8 sm:px-6">
+          <div className="skeleton h-8 w-40" />
+          <div className="mt-6 grid gap-6 lg:grid-cols-[320px_1fr]">
+            <div className="skeleton h-72 rounded-2xl" />
+            <div className="skeleton h-40 rounded-2xl" />
+          </div>
         </div>
       }
     >

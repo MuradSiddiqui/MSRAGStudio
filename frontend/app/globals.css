@@ -2,6 +2,201 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+@layer base {
+  :root {
+    --canvas: 246 245 240;
+    --surface: 255 255 255;
+    --raised: 238 236 229;
+    --line: 226 223 214;
+    --ink: 21 20 16;
+    --muted: 104 101 92;
+    --faint: 160 156 145;
+    --accent: 200 241 53;
+    --accent-ink: 21 20 16;
+    --mode-basic: 234 88 12;
+    --mode-multi: 8 145 178;
+    --mode-agentic: 77 124 15;
+    --danger: 220 38 38;
+    --success: 22 163 74;
+    color-scheme: light;
+  }
+
+  .dark {
+    --canvas: 12 12 11;
+    --surface: 21 21 19;
+    --raised: 30 30 27;
+    --line: 43 43 38;
+    --ink: 242 241 236;
+    --muted: 154 152 143;
+    --faint: 105 103 96;
+    --accent: 200 241 53;
+    --accent-ink: 12 12 11;
+    --mode-basic: 251 146 60;
+    --mode-multi: 34 211 238;
+    --mode-agentic: 163 230 53;
+    --danger: 248 113 113;
+    --success: 74 222 128;
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  ::selection {
+    background: rgb(var(--accent) / 0.6);
+    color: rgb(var(--accent-ink));
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--ink));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-[background-color,color,transform,opacity] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-canvas hover:bg-ink/85;
+  }
+  .btn-accent {
+    @apply btn bg-accent text-accent-ink hover:brightness-95;
+  }
+  .btn-ghost {
+    @apply btn border border-line bg-surface text-ink hover:bg-raised;
+  }
+  .btn-quiet {
+    @apply btn px-2.5 text-muted hover:bg-raised hover:text-ink;
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-surface;
+  }
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted;
+  }
+  .kbd {
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded border border-line bg-raised px-1 font-mono text-[10px] text-muted;
+  }
+  .bg-grid {
+    background-image: linear-gradient(rgb(var(--line) / 0.7) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--line) / 0.7) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, black 30%, transparent 75%);
+  }
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--raised)) 0%,
+      rgb(var(--line)) 50%,
+      rgb(var(--raised)) 100%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-md;
+  }
+}
+
+/* Dotted dividers drawn with pseudo-elements so right and bottom can combine. */
+@layer utilities {
+  .dash-r::after,
+  .dash-b::before {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    background-image: radial-gradient(circle, rgb(var(--faint) / 0.8) 1px, transparent 1.3px);
+  }
+  .dash-r::after {
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 3px;
+    background-size: 3px 9px;
+    background-repeat: repeat-y;
+  }
+  .dash-b::before {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background-size: 9px 3px;
+    background-repeat: repeat-x;
+  }
+  .no-dash-b::before {
+    content: none;
+  }
+}
+
+/* Answer typography for rendered Markdown. */
+.prose-answer {
+  @apply text-[15px] leading-7 text-ink;
+}
+.prose-answer > * + * {
+  @apply mt-3;
+}
+.prose-answer h1,
+.prose-answer h2,
+.prose-answer h3,
+.prose-answer h4 {
+  @apply mt-5 font-display text-base font-semibold tracking-tight;
+}
+.prose-answer h1 {
+  @apply text-xl;
+}
+.prose-answer h2 {
+  @apply text-lg;
+}
+.prose-answer ul {
+  @apply list-disc space-y-1 pl-5 marker:text-faint;
+}
+.prose-answer ol {
+  @apply list-decimal space-y-1 pl-5 marker:font-mono marker:text-xs marker:text-muted;
+}
+.prose-answer strong {
+  @apply font-semibold;
+}
+.prose-answer em {
+  @apply italic;
+}
+.prose-answer code {
+  @apply rounded bg-raised px-1 py-0.5 font-mono text-[13px];
+}
+.prose-answer pre {
+  @apply overflow-x-auto rounded-xl bg-raised p-3 text-[13px];
+}
+.prose-answer pre code {
+  @apply bg-transparent p-0;
+}
+.prose-answer blockquote {
+  @apply border-l-2 border-line pl-4 text-muted;
+}
+.prose-answer hr {
+  @apply my-5 border-line;
+}
+.prose-answer table {
+  @apply block w-full overflow-x-auto border-collapse text-sm;
+}
+.prose-answer th {
+  @apply border-b border-line px-3 py-2 text-left font-mono text-[11px] font-medium uppercase tracking-wider text-muted;
+}
+.prose-answer td {
+  @apply border-b border-line/60 px-3 py-2 align-top;
+}
+.prose-answer a:not(.cite) {
+  @apply underline decoration-faint underline-offset-2 hover:decoration-ink;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

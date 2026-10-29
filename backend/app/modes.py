@@ -1,6 +1,6 @@
 """The three retrieval modes.
 
-basic      - hybrid-style top-k vector search over text chunks, cited answer.
+basic      - top-k vector search over text chunks only, cited answer.
 multimodal - same index, but image chunks (vision descriptions) are included and
              cited by file + region text.
 agentic    - multi-step: plan -> retrieve per sub-question -> completeness check
@@ -8,13 +8,17 @@ agentic    - multi-step: plan -> retrieve per sub-question -> completeness check
 """
 from . import embeddings, llm, store
 
+MAX_SUB_QUESTIONS = 6
 
-def _retrieve(question: str, limit: int = 8) -> list[dict]:
-    return store.search(embeddings.embed_query(question), limit=limit)
+
+def _retrieve(question: str, limit: int = 8, kind: str | None = None) -> list[dict]:
+    vector = embeddings.embed_query(question)
+    store.ensure_collection(len(vector))
+    return store.search(vector, limit=limit, kind=kind)
 
 
 def basic(question: str) -> dict:
-    hits = _retrieve(question)
+    hits = _retrieve(question, kind="text")
     answer = llm.answer_with_citations(question, hits)
     return {"mode": "basic", "answer": answer, "sources": hits}
 
@@ -29,7 +33,7 @@ def multimodal(question: str) -> dict:
     return {"mode": "multimodal", "answer": answer, "sources": hits}
 
 
-def agentic(question: str) -> dict:
+def _plan(question: str) -> list[str]:
     plan_raw = llm.chat(
         [
             {
@@ -37,6 +41,7 @@ def agentic(question: str) -> dict:
                 "content": (
                     "Break the user's question into sub-questions that together cover it "
                     "COMPLETELY (for 'list all' questions, one sub-question per category). "
+                    f"Use at most {MAX_SUB_QUESTIONS} sub-questions. "
                     'Reply with JSON: {"sub_questions": ["...", "..."]}'
                 ),
             },
@@ -45,15 +50,25 @@ def agentic(question: str) -> dict:
         model=llm.settings.groq_fast_model,
         json_mode=True,
     )
-    sub_questions = llm.parse_json(plan_raw).get("sub_questions", [question])
-    all_hits: dict[str, dict] = {}
+    subs = llm.parse_json(plan_raw).get("sub_questions")
+    if not isinstance(subs, list):
+        subs = []
+    subs = [s.strip() for s in subs if isinstance(s, str) and s.strip()]
+    return subs[:MAX_SUB_QUESTIONS] or [question]
+
+
+def agentic(question: str) -> dict:
+    sub_questions = _plan(question)
+    all_hits: dict[tuple, dict] = {}
     per_sub = []
     for sub in sub_questions:
         hits = _retrieve(sub, limit=8)
         for h in hits:
-            all_hits[h["text"][:80]] = h
+            key = (h.get("source"), h.get("page"), h.get("chunk"))
+            if key not in all_hits or h["score"] > all_hits[key]["score"]:
+                all_hits[key] = h
         per_sub.append({"sub_question": sub, "found": len(hits)})
-    contexts = list(all_hits.values())
+    contexts = sorted(all_hits.values(), key=lambda h: h["score"], reverse=True)
     answer = llm.answer_with_citations(
         question,
         contexts,
