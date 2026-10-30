@@ -1,5 +1,6 @@
 """MS RAG Studio API: upload -> ingest -> ask (3 modes) -> report download."""
 import logging
+import os
 import re
 import threading
 from contextlib import asynccontextmanager
@@ -15,7 +16,12 @@ from . import embeddings, extract, llm, modes, pipeline, store
 
 log = logging.getLogger("msrag")
 
-UPLOAD_DIR = Path(__file__).resolve().parents[2] / "data" / "uploads"
+# Default: backend/data/uploads (works locally and in Docker/Railway).
+# Override with MSRAG_UPLOAD_DIR if you mount a volume elsewhere.
+UPLOAD_DIR = Path(
+    os.environ.get("MSRAG_UPLOAD_DIR")
+    or (Path(__file__).resolve().parents[1] / "data" / "uploads")
+)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 

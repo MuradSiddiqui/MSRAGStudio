@@ -45,14 +45,30 @@ run on Vercel serverless. Split the stack:
 | Vectors | **Qdrant Cloud** (or Docker) | URL + API key |
 | LLMs | **Groq** (+ **Gemini** for images) | API keys |
 
-### 1. Deploy the backend somewhere with a persistent Python process
+### 1. Deploy the backend on Railway (recommended)
 
-Example on Railway / Render / Fly: root = `backend/`, start command
-`uvicorn app.main:app --host 0.0.0.0 --port $PORT`, set env vars from
-`backend/.env.example`. First boot downloads the embedding model (~130 MB).
+The repo includes `backend/Dockerfile` and `backend/railway.toml`.
 
-Expose HTTPS (e.g. `https://msrag-api.up.railway.app`). CORS already allows
-`*.vercel.app` and localhost.
+1. Push this repo to GitHub (already done if you followed earlier steps).
+2. Open [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** → pick `MSRAGStudio`.
+3. After the service appears: **Settings → Root Directory** → set to `backend`.
+4. **Settings → Build** should use the Dockerfile (from `railway.toml`).
+5. **Variables** → add every key from `backend/.env` / `.env.example`:
+   - `MSRAG_GROQ_API_KEY`
+   - `MSRAG_QDRANT_URL`
+   - `MSRAG_QDRANT_API_KEY`
+   - `MSRAG_EMBED_MODEL` = `BAAI/bge-small-en-v1.5`
+   - `MSRAG_GEMINI_API_KEY` (images)
+   - `MSRAG_VISION_PROVIDER` = `auto`
+6. **Settings → Networking → Generate Domain** → copy the HTTPS URL
+   (e.g. `https://msrag-studio-production.up.railway.app`).
+7. Use a plan with **≥ 2 GB RAM** (8 GB is safer). First deploy downloads Torch +
+   BGE and can take 5–15 minutes; `/health` returns `model_ready: true` when warm.
+
+Optional volume (keeps the model across redeploys): mount `/data` so
+`HF_HOME` / uploads persist.
+
+Expose HTTPS. CORS already allows `*.vercel.app` and localhost.
 
 ### 2. Deploy the frontend on Vercel
 
