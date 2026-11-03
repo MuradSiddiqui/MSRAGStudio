@@ -23,27 +23,28 @@ export default function OpenGraphImage() {
           overflow: "hidden",
         }}
       >
-        {/* Grid wash */}
         <div
           style={{
             position: "absolute",
-            inset: 0,
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-            opacity: 0.5,
+            right: -120,
+            top: -120,
+            width: 480,
+            height: 480,
+            borderRadius: 999,
+            background: "#c8f135",
+            opacity: 0.18,
           }}
         />
         <div
           style={{
             position: "absolute",
-            right: -80,
-            top: -80,
-            width: 420,
-            height: 420,
+            left: -80,
+            bottom: -160,
+            width: 360,
+            height: 360,
             borderRadius: 999,
-            background: "rgba(200,241,53,0.18)",
-            filter: "blur(40px)",
+            background: "#22d3ee",
+            opacity: 0.1,
           }}
         />
 
@@ -105,8 +106,8 @@ export default function OpenGraphImage() {
                 gap: 10,
                 padding: "10px 18px",
                 borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.04)",
+                border: "1px solid #2b2b26",
+                background: "#151513",
                 fontSize: 20,
               }}
             >
