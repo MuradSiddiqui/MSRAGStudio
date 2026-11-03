@@ -25,13 +25,47 @@ const serif = Instrument_Serif({
 });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "https://ms-rag-studio-muradsiddiqui.vercel.app");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "MS RAG Studio: cited answers from your documents",
     template: "%s · MS RAG Studio",
   },
   description:
-    "Ask questions across your documents and images, and get answers with sources you can check.",
+    "Upload PDFs, drawings and notes. Ask in Basic, Multimodal or Agentic mode and get answers with page-level citations you can verify.",
+  applicationName: "MS RAG Studio",
+  keywords: [
+    "RAG",
+    "retrieval augmented generation",
+    "document Q&A",
+    "citations",
+    "multimodal",
+    "agentic RAG",
+  ],
+  authors: [{ name: "Murad Siddiqui" }],
+  creator: "Murad Siddiqui",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: siteUrl,
+    siteName: "MS RAG Studio",
+    title: "MS RAG Studio",
+    description:
+      "Answers you can trace back to the page — Basic, Multimodal and Agentic RAG in one studio.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MS RAG Studio",
+    description:
+      "Ask your documents anything. Every answer cites the exact page or image.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
