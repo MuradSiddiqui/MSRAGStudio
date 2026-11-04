@@ -31,6 +31,12 @@ interface Props {
   documentsState: "loading" | "ready" | "error";
   uploads: UploadItem[];
   recent: Set<string>;
+  /** Empty = search all files. Non-empty = only these names. */
+  scopedNames: string[];
+  onToggleScope: (name: string) => void;
+  onScopeOnly: (name: string) => void;
+  onScopeAll: () => void;
+  onClearScope: () => void;
   onFiles: (files: File[]) => void;
   onRetry: (id: string) => void;
   onDismiss: (id: string) => void;
@@ -60,6 +66,11 @@ export default function UploadZone({
   documentsState,
   uploads,
   recent,
+  scopedNames,
+  onToggleScope,
+  onScopeOnly,
+  onScopeAll,
+  onClearScope,
   onFiles,
   onRetry,
   onDismiss,
@@ -92,6 +103,8 @@ export default function UploadZone({
     ? documents.filter((d) => d.name.toLowerCase().includes(filter.toLowerCase()))
     : documents;
   const totalChunks = documents.reduce((sum, d) => sum + d.chunks, 0);
+  const scoping = scopedNames.length > 0;
+  const scopedCount = scoping ? scopedNames.length : documents.length;
 
   return (
     <div>
@@ -199,7 +212,7 @@ export default function UploadZone({
         </ul>
       )}
 
-      <div className="mt-5 flex items-center justify-between">
+      <div className="mt-5 flex items-center justify-between gap-2">
         <p className="eyebrow">
           Library{" "}
           {documentsState === "ready" && (
@@ -218,6 +231,26 @@ export default function UploadZone({
           <RefreshCw className={`h-3.5 w-3.5 ${documentsState === "loading" ? "animate-spin" : ""}`} />
         </button>
       </div>
+
+      {documents.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+          <span className={scoping ? "font-medium text-ink" : "text-muted"}>
+            {scoping
+              ? `Asking ${scopedCount} of ${documents.length}`
+              : "Asking all files"}
+          </span>
+          <span className="text-faint">·</span>
+          {scoping ? (
+            <button type="button" onClick={onClearScope} className="text-muted underline-offset-2 hover:text-ink hover:underline">
+              Use all
+            </button>
+          ) : (
+            <button type="button" onClick={onScopeAll} className="text-muted underline-offset-2 hover:text-ink hover:underline">
+              Select all
+            </button>
+          )}
+        </div>
+      )}
 
       {documents.length > 5 && (
         <input
@@ -250,58 +283,90 @@ export default function UploadZone({
         )}
         {visible.length > 0 && (
           <ul className="-mx-1.5 max-h-[340px] space-y-0.5 overflow-y-auto">
-            {visible.map((d) => (
-              <li
-                key={d.name}
-                className="group flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 hover:bg-raised/70"
-              >
-                <FileGlyph name={d.name} kind={d.kind} />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="truncate text-[13px] font-medium" title={d.name}>
-                      {d.name}
-                    </span>
-                    {recent.has(d.name) && (
-                      <span className="shrink-0 rounded bg-accent px-1 font-mono text-[9px] font-semibold uppercase text-accent-ink">
-                        new
-                      </span>
-                    )}
-                  </span>
-                  <span className="block font-mono text-[11px] text-faint">
-                    {d.kind === "image" ? "image" : `${d.chunks} chunk${d.chunks === 1 ? "" : "s"}`}
-                  </span>
-                </span>
-                {confirming === d.name ? (
-                  <span className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(d.name)}
-                      disabled={deleting === d.name}
-                      className="rounded-md bg-danger px-2 py-1 text-[11px] font-medium text-white disabled:opacity-60"
-                    >
-                      {deleting === d.name ? "Removing…" : "Remove"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirming(null)}
-                      className="rounded-md px-1.5 py-1 text-[11px] text-muted hover:text-ink"
-                    >
-                      Cancel
-                    </button>
-                  </span>
-                ) : (
+            {visible.map((d) => {
+              const checked = !scoping || scopedNames.includes(d.name);
+              const dimmed = scoping && !scopedNames.includes(d.name);
+              return (
+                <li
+                  key={d.name}
+                  className={`group flex items-center gap-2 rounded-xl px-1.5 py-1.5 hover:bg-raised/70 ${
+                    dimmed ? "opacity-45" : ""
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => onToggleScope(d.name)}
+                    className="h-3.5 w-3.5 shrink-0 rounded border-line accent-ink"
+                    aria-label={
+                      scopedNames.includes(d.name)
+                        ? `Exclude ${d.name} from this question`
+                        : `Include ${d.name} in this question`
+                    }
+                    title="Include in this question"
+                  />
+                  <FileGlyph name={d.name} kind={d.kind} />
                   <button
                     type="button"
-                    onClick={() => setConfirming(d.name)}
-                    className="shrink-0 rounded-md p-1.5 text-faint opacity-0 transition-opacity hover:bg-surface hover:text-danger focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
-                    aria-label={`Remove ${d.name} from the index`}
-                    title="Remove from index"
+                    onClick={() => onToggleScope(d.name)}
+                    className="min-w-0 flex-1 text-left"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate text-[13px] font-medium" title={d.name}>
+                        {d.name}
+                      </span>
+                      {recent.has(d.name) && (
+                        <span className="shrink-0 rounded bg-accent px-1 font-mono text-[9px] font-semibold uppercase text-accent-ink">
+                          new
+                        </span>
+                      )}
+                    </span>
+                    <span className="block font-mono text-[11px] text-faint">
+                      {d.kind === "image" ? "image" : `${d.chunks} chunk${d.chunks === 1 ? "" : "s"}`}
+                    </span>
                   </button>
-                )}
-              </li>
-            ))}
+                  {confirming === d.name ? (
+                    <span className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(d.name)}
+                        disabled={deleting === d.name}
+                        className="rounded-md bg-danger px-2 py-1 text-[11px] font-medium text-white disabled:opacity-60"
+                      >
+                        {deleting === d.name ? "Removing…" : "Remove"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirming(null)}
+                        className="rounded-md px-1.5 py-1 text-[11px] text-muted hover:text-ink"
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+                      <button
+                        type="button"
+                        onClick={() => onScopeOnly(d.name)}
+                        className="rounded-md px-1.5 py-1 font-mono text-[10px] text-muted hover:bg-surface hover:text-ink"
+                        title="Ask using only this file"
+                      >
+                        Only
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirming(d.name)}
+                        className="rounded-md p-1.5 text-faint hover:bg-surface hover:text-danger"
+                        aria-label={`Remove ${d.name} from the index`}
+                        title="Remove from index"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
         {filter && visible.length === 0 && documents.length > 0 && (

@@ -1,106 +1,141 @@
 # MS RAG Studio
 
-One studio, three ways to read your files: **Basic RAG** for text documents,
-**Multimodal RAG** for text + images (plans, drawings, scans), and **Agentic RAG**,
-which plans, retrieves in steps and verifies completeness — all matching items,
-not just the top few.
+Cited question answering over your own documents and drawings.
 
-Upload documents and images, ask in plain language, get cited answers, view them
-in the studio or download a report (PDF / Markdown).
+MS RAG Studio indexes PDFs, Word files, plain text, and images, then answers in three retrieval modes — **Basic**, **Multimodal**, and **Agentic** — with inline citations back to the page or image that supports each claim.
+
+**Live demo:** [ms-rag-studio-muradsiddiqui.vercel.app](https://ms-rag-studio-muradsiddiqui.vercel.app)
+
+![Landing](docs/images/landing-hero.png)
+
+---
+
+## Features
+
+| Mode | Behaviour |
+| --- | --- |
+| **Basic** | Dense retrieval over text chunks; answers with page citations |
+| **Multimodal** | Same index including vision-described images; cites `[file · image]` |
+| **Agentic** | Plans sub-questions, retrieves per step, returns a coverage report |
+
+Also included: document library with ask-scope (limit a query to selected files), session history, Markdown report export, and light / dark / system theme.
+
+![Studio](docs/images/studio.png)
+
+![Pipeline](docs/images/how-it-works.png)
+
+---
 
 ## Architecture
 
-- **Live path (in-app):** Next.js frontend -> FastAPI Q&A service -> Qdrant + Groq (streaming answers)
-- **Orchestration (n8n):** ingestion workflows, scheduled re-indexing, report delivery, evaluation runs.
-  n8n runs separately (self-hosted Docker or n8n Cloud) — it does not run on Vercel.
-
-## Stack
-
-FastAPI · Next.js · Qdrant · BGE embeddings · Groq (gpt-oss-120b answers, gpt-oss-20b fast tasks, Llama 4 Scout vision) · n8n · Docker
-
-## Run locally
-
-```bash
-docker compose up -d            # Qdrant + n8n (optional if you use Qdrant Cloud)
-cd backend && python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env            # fill in keys
-uvicorn app.main:app --port 8000
+```
+Browser (Next.js on Vercel)
+        │  HTTPS
+        ▼
+FastAPI (Railway)  ──►  BGE embeddings (local)
+        │               Groq (answers / planning)
+        │               Gemini (image descriptions)
+        ▼
+   Qdrant Cloud
 ```
 
-```bash
-cd frontend && npm install && npm run dev   # http://localhost:3000
-```
+n8n workflows under `n8n/` are optional for batch ingestion and scheduled jobs. They are not required for the interactive Studio path.
 
-## Deploy (Vercel UI + separate API)
-
-**Vercel only hosts the Next.js frontend.** The FastAPI backend loads a local
-BGE embedding model (PyTorch) and talks to Qdrant / Groq / Gemini — that cannot
-run on Vercel serverless. Split the stack:
-
-| Piece | Where it runs | What it needs |
+| Layer | Runtime | Notes |
 | --- | --- | --- |
-| Studio UI | **Vercel** (`frontend/`) | `NEXT_PUBLIC_API_URL` → your public backend URL |
-| RAG API | **Railway / Render / Fly.io / a VPS** (`backend/`) | `MSRAG_*` keys from `backend/.env.example` |
-| Vectors | **Qdrant Cloud** (or Docker) | URL + API key |
-| LLMs | **Groq** (+ **Gemini** for images) | API keys |
+| UI | Vercel · `frontend/` | Set `NEXT_PUBLIC_API_URL` to the API origin |
+| API | Railway (or similar) · `backend/` | Long-running Python process; ≥2 GB RAM recommended |
+| Vectors | Qdrant Cloud | Collection `msrag_chunks` |
+| LLMs | Groq + Gemini | Keys via `MSRAG_*` env vars |
 
-### 1. Deploy the backend on Railway (recommended)
+The embedding model cannot run on Vercel serverless; keep the API on a host that supports Docker / persistent Python.
 
-The repo includes `backend/Dockerfile` and `backend/railway.toml`.
+---
 
-1. Push this repo to GitHub (already done if you followed earlier steps).
-2. Open [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** → pick `MSRAGStudio`.
-3. After the service appears: **Settings → Root Directory** → set to `backend`.
-4. **Settings → Build** should use the Dockerfile (from `railway.toml`).
-5. **Variables** → add every key from `backend/.env` / `.env.example`:
-   - `MSRAG_GROQ_API_KEY`
-   - `MSRAG_QDRANT_URL`
-   - `MSRAG_QDRANT_API_KEY`
-   - `MSRAG_EMBED_MODEL` = `BAAI/bge-small-en-v1.5`
-   - `MSRAG_GEMINI_API_KEY` (images)
-   - `MSRAG_VISION_PROVIDER` = `auto`
-6. **Settings → Networking → Generate Domain** → copy the HTTPS URL
-   (e.g. `https://msrag-studio-production.up.railway.app`).
-7. Use a plan with **≥ 2 GB RAM** (8 GB is safer). First deploy downloads Torch +
-   BGE and can take 5–15 minutes; `/health` returns `model_ready: true` when warm.
-
-Optional volume (keeps the model across redeploys): mount `/data` so
-`HF_HOME` / uploads persist.
-
-Expose HTTPS. CORS already allows `*.vercel.app` and localhost.
-
-### 2. Deploy the frontend on Vercel
-
-- Framework: Next.js · Root Directory: **`frontend`**
-- Environment variable:
+## Repository layout
 
 ```
-NEXT_PUBLIC_API_URL=https://YOUR-BACKEND-HOST
+frontend/          Next.js 14 app (Studio + marketing pages)
+backend/           FastAPI: upload, ingest, ask, report
+data/demo/         Sample documents for local checks
+docs/images/       README screenshots
+n8n/workflows/     Optional automation
+Dockerfile         Production image (repo root → backend)
 ```
 
-Without that variable the browser expects a local proxy to `localhost:8000`,
-which does not exist for visitors on the Vercel site.
+---
 
-### 3. How a visitor uses the live site
+## Local development
 
-1. Open your Vercel URL (e.g. `https://ms-rag-studio.vercel.app`).
-2. Go to **Studio**, upload PDFs / images / text.
-3. Pick Basic / Multimodal / Agentic and ask — the UI calls your hosted
-   FastAPI, which embeds, searches Qdrant, and answers via Groq.
-
-If the UI shows “API offline”, the backend URL is wrong, down, or blocked by
-CORS (custom domains need to be allowed in `backend/app/main.py`).
-
-### Temporary: UI on Vercel, API on your laptop
+**Prerequisites:** Python 3.11+, Node 18+, API keys for Groq, Qdrant, and (for images) Gemini.
 
 ```bash
-# terminal A — backend
-cd backend && uvicorn app.main:app --port 8000
-
-# terminal B — public tunnel (Cloudflare or ngrok)
-cloudflared tunnel --url http://localhost:8000
-# set NEXT_PUBLIC_API_URL on Vercel to the tunnel HTTPS URL, then redeploy
+# API
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill MSRAG_* values
+uvicorn app.main:app --reload --port 8000
 ```
 
-Good for demos; for real users host the backend permanently.
+```bash
+# UI — proxies /backend/* to localhost:8000 when NEXT_PUBLIC_API_URL is unset
+cd frontend
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). Confirm `GET /health` returns `model_ready: true` before the first upload (first boot downloads BGE).
+
+Optional local Qdrant / n8n:
+
+```bash
+docker compose up -d
+```
+
+---
+
+## Production
+
+### API (Railway)
+
+1. Connect this GitHub repo; build uses the root `Dockerfile`.
+2. Set variables from `backend/.env.example` (`MSRAG_GROQ_API_KEY`, `MSRAG_QDRANT_URL`, `MSRAG_QDRANT_API_KEY`, `MSRAG_EMBED_MODEL`, `MSRAG_GEMINI_API_KEY`, `MSRAG_VISION_PROVIDER`).
+3. Publish a public HTTPS domain.
+4. Ensure the Qdrant API key allows Railway’s egress (no home-IP-only restriction).
+
+Health check: `https://<api-host>/health`
+
+### UI (Vercel)
+
+| Setting | Value |
+| --- | --- |
+| Root Directory | `frontend` |
+| Framework | Next.js |
+| Env | `NEXT_PUBLIC_API_URL=https://<api-host>` |
+| Env (optional) | `NEXT_PUBLIC_SITE_URL=https://<your-vercel-domain>` |
+
+Redeploy after changing env vars so `NEXT_PUBLIC_*` values are baked into the client bundle.
+
+CORS on the API already allows `*.vercel.app` and localhost. Add custom domains in `backend/app/main.py` if needed.
+
+---
+
+## Configuration reference
+
+See `backend/.env.example` and `frontend/.env.example`. Never commit real `.env` files.
+
+| Variable | Purpose |
+| --- | --- |
+| `MSRAG_GROQ_API_KEY` | Chat + planning |
+| `MSRAG_QDRANT_URL` / `MSRAG_QDRANT_API_KEY` | Vector store |
+| `MSRAG_EMBED_MODEL` | Default `BAAI/bge-small-en-v1.5` |
+| `MSRAG_GEMINI_API_KEY` | Image descriptions |
+| `MSRAG_VISION_PROVIDER` | `auto` \| `gemini` \| `groq` |
+| `NEXT_PUBLIC_API_URL` | Browser → API base URL |
+
+---
+
+## License
+
+Private project · © Murad Siddiqui

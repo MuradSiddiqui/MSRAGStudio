@@ -104,6 +104,9 @@ export default function AnswerPanel({
         <span className="font-mono text-[11px] text-faint">
           {result.sources.length} passage{result.sources.length === 1 ? "" : "s"} · {uniqueFiles} file
           {uniqueFiles === 1 ? "" : "s"}
+          {result.scoped_to && result.scoped_to.length > 0
+            ? ` · scoped to ${result.scoped_to.length}`
+            : ""}
         </span>
         {elapsedMs !== undefined && (
           <span className="inline-flex items-center gap-1 font-mono text-[11px] text-faint">

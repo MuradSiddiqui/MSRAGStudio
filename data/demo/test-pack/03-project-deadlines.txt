@@ -1,0 +1,23 @@
+Project Alpha — Internal Handbook Excerpt (Demo)
+
+1. Team
+- Project lead: Samir Khan
+- Architecture reviewer: Lena Ortiz
+- Safety officer: Priya Nair
+
+2. Key deadlines
+- Schema freeze: 12 March 2026
+- Fire-door schedule submission: 28 March 2026
+- Client design review: 4 April 2026
+- Tender package issue: 22 April 2026
+- Site handover target: 15 September 2026
+
+3. Mandatory deliverables before tender
+- Updated door schedule (all fire-rated doors listed)
+- Escape-route plan with travel distances
+- Plant-room ventilation note
+
+4. Open risks
+- Plant room door rating still unconfirmed on the drawing
+- Corridor width near Meeting Room may be under 1.25 m
+- Smoke extraction opening size not measured yet

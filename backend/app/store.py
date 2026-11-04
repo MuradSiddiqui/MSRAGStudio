@@ -7,6 +7,7 @@ from qdrant_client.models import (
     FieldCondition,
     Filter,
     FilterSelector,
+    MatchAny,
     MatchValue,
     PayloadSchemaType,
     PointStruct,
@@ -90,17 +91,24 @@ def upsert(chunks: list[dict], vectors: list[list[float]]) -> int:
     return len(points)
 
 
-def search(vector: list[float], limit: int = 8, kind: str | None = None) -> list[dict]:
+def search(
+    vector: list[float],
+    limit: int = 8,
+    kind: str | None = None,
+    sources: list[str] | None = None,
+) -> list[dict]:
     if not collection_exists():
         return []
-    query_filter = (
-        Filter(must=[FieldCondition(key="kind", match=MatchValue(value=kind))]) if kind else None
-    )
+    must = []
+    if kind:
+        must.append(FieldCondition(key="kind", match=MatchValue(value=kind)))
+    if sources:
+        must.append(FieldCondition(key="source", match=MatchAny(any=sources)))
     hits = client().query_points(
         collection_name=settings.collection,
         query=vector,
         limit=limit,
-        query_filter=query_filter,
+        query_filter=Filter(must=must) if must else None,
     ).points
     return [{"score": h.score, **h.payload} for h in hits]
 

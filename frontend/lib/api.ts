@@ -48,6 +48,8 @@ export interface AskResult {
   answer: string;
   sources: SourceHit[];
   coverage?: Coverage;
+  /** Filenames the search was limited to; empty means the whole index. */
+  scoped_to?: string[];
 }
 
 export interface Health {
@@ -151,13 +153,17 @@ export async function uploadFile(file: File): Promise<UploadResult> {
 export async function askQuestion(
   question: string,
   mode: Mode,
-  signal?: AbortSignal
+  options?: { sources?: string[]; signal?: AbortSignal }
 ): Promise<AskResult> {
   const res = await request("/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, mode }),
-    signal,
+    body: JSON.stringify({
+      question,
+      mode,
+      sources: options?.sources ?? [],
+    }),
+    signal: options?.signal,
   });
   return res.json();
 }
@@ -174,6 +180,9 @@ export function buildReport(question: string, result: AskResult): string {
     `**Mode:** ${result.mode}`,
     `**Question:** ${question}`,
     `**Generated:** ${new Date().toLocaleString()}`,
+    ...(result.scoped_to && result.scoped_to.length > 0
+      ? [`**Scoped to:** ${result.scoped_to.join(", ")}`]
+      : []),
     "",
     "## Answer",
     "",

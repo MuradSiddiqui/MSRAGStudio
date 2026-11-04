@@ -27,17 +27,28 @@ import { MODES, MODE_THEMES } from "@/lib/theme";
 import UploadZone, { type UploadItem } from "./UploadZone";
 import AnswerPanel from "./AnswerPanel";
 
-const DEMO_QUESTION = "Which doors must be fire-rated?";
 const HISTORY_KEY = "msrag-history";
 const HISTORY_LIMIT = 25;
 const MAX_QUESTION = 2000;
 
-const SUGGESTIONS = [
-  DEMO_QUESTION,
-  "Summarise the key points of my documents",
-  "List every deadline or date mentioned",
-  "What does the floor plan show?",
-];
+/** Suggestions teach what each mode is for — not one shared list. */
+const SUGGESTIONS: Record<Mode, string[]> = {
+  basic: [
+    "Which doors must be fire-rated?",
+    "What is the minimum corridor width?",
+    "Summarise the key points of the selected documents",
+  ],
+  multimodal: [
+    "Looking at the floor plan, which doors are marked fire-rated?",
+    "What does the floor plan show?",
+    "Which rooms are next to the stairwell?",
+  ],
+  agentic: [
+    "List every deadline in the documents, with dates",
+    "List all open risks mentioned across the files",
+    "Which doors must be fire-rated according to the code, and which appear on the plan?",
+  ],
+};
 
 interface HistoryEntry {
   id: string;
@@ -118,6 +129,8 @@ export default function Studio() {
   const [documentsState, setDocumentsState] = useState<"loading" | "ready" | "error">("loading");
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [recent, setRecent] = useState<Set<string>>(new Set());
+  /** Empty = search everything. Non-empty = only these filenames. */
+  const [scopedNames, setScopedNames] = useState<string[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -295,6 +308,7 @@ export default function Studio() {
       try {
         await deleteDocument(name);
         setDocuments((prev) => prev.filter((d) => d.name !== name));
+        setScopedNames((prev) => prev.filter((n) => n !== name));
         toast(`Removed ${name} from the index`);
       } catch (err) {
         toast(err instanceof Error ? err.message : "Could not remove the file", "error");
@@ -303,8 +317,41 @@ export default function Studio() {
     [toast]
   );
 
+  const toggleScope = useCallback(
+    (name: string) => {
+      setScopedNames((prev) => {
+        // Empty list means "all files". First uncheck → all except this one.
+        if (prev.length === 0) {
+          return documents.map((d) => d.name).filter((n) => n !== name);
+        }
+        if (prev.includes(name)) {
+          const next = prev.filter((n) => n !== name);
+          return next.length === 0 ? [] : next;
+        }
+        const next = [...prev, name];
+        // If every file is selected, collapse back to "all".
+        if (next.length >= documents.length) return [];
+        return next;
+      });
+    },
+    [documents]
+  );
+
+  const scopeOnly = useCallback((name: string) => {
+    setScopedNames([name]);
+    toast(`Asking only ${name}`);
+  }, [toast]);
+
+  const scopeAll = useCallback(() => {
+    setScopedNames(documents.map((d) => d.name));
+  }, [documents]);
+
+  const clearScope = useCallback(() => {
+    setScopedNames([]);
+  }, []);
+
   const ask = useCallback(
-    async (q: string, m: Mode) => {
+    async (q: string, m: Mode, sourcesOverride?: string[]) => {
       q = q.trim();
       if (!q || abortRef.current) return;
       const controller = new AbortController();
@@ -312,8 +359,12 @@ export default function Studio() {
       setAsking(true);
       setError(null);
       const started = Date.now();
+      const sources = sourcesOverride ?? scopedNames;
       try {
-        const result = await askQuestion(q, m, controller.signal);
+        const result = await askQuestion(q, m, {
+          sources,
+          signal: controller.signal,
+        });
         const entry: HistoryEntry = {
           id: uid(),
           question: q,
@@ -341,7 +392,7 @@ export default function Studio() {
         setAsking(false);
       }
     },
-    []
+    [scopedNames]
   );
 
   const handleAsk = () => ask(question, mode);
@@ -416,6 +467,11 @@ export default function Studio() {
               documentsState={documentsState}
               uploads={uploads}
               recent={recent}
+              scopedNames={scopedNames}
+              onToggleScope={toggleScope}
+              onScopeOnly={scopeOnly}
+              onScopeAll={scopeAll}
+              onClearScope={clearScope}
               onFiles={handleFiles}
               onRetry={handleRetry}
               onDismiss={handleDismiss}
@@ -539,9 +595,39 @@ export default function Studio() {
                 }
               }}
               rows={2}
-              placeholder="Ask anything about your documents…"
+              placeholder={
+                mode === "multimodal"
+                  ? "Ask about text or images in scope…"
+                  : mode === "agentic"
+                    ? "Ask a list-all or coverage question…"
+                    : "Ask anything about the selected documents…"
+              }
               className="block max-h-[280px] w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none placeholder:text-faint"
             />
+            {scopedNames.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted">Scope:</span>
+                {scopedNames.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => toggleScope(name)}
+                    className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-line bg-raised px-2 py-0.5 text-[11px] text-ink"
+                    title={`Remove ${name} from scope`}
+                  >
+                    <span className="truncate">{name}</span>
+                    <X className="h-3 w-3 shrink-0 text-muted" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearScope}
+                  className="text-[11px] text-muted underline-offset-2 hover:text-ink hover:underline"
+                >
+                  Use all
+                </button>
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="hidden items-center gap-1 text-xs text-faint sm:inline-flex">
                 <span className="kbd">↵</span> to ask · <span className="kbd">⇧</span>
@@ -583,23 +669,27 @@ export default function Studio() {
             </div>
           </form>
 
-          {/* Suggestions */}
+          {/* Mode-specific suggestions */}
           {!current && !asking && !question && (
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => {
-                    setQuestion(s);
-                    if (s === DEMO_QUESTION) setMode("agentic");
-                    textareaRef.current?.focus();
-                  }}
-                  className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-muted transition-colors hover:border-faint hover:text-ink"
-                >
-                  {s}
-                </button>
-              ))}
+            <div>
+              <p className="mb-2 px-0.5 font-mono text-[10px] uppercase tracking-wider text-faint">
+                Try with {theme.short}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTIONS[mode].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setQuestion(s);
+                      textareaRef.current?.focus();
+                    }}
+                    className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-muted transition-colors hover:border-faint hover:text-ink"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

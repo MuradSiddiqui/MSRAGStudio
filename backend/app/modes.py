@@ -5,32 +5,39 @@ multimodal - same index, but image chunks (vision descriptions) are included and
              cited by file + region text.
 agentic    - multi-step: plan -> retrieve per sub-question -> completeness check
              against the whole index -> final answer with a coverage report.
+
+Optional `sources` limits every retrieve step to those filenames.
 """
 from . import embeddings, llm, store
 
 MAX_SUB_QUESTIONS = 6
 
 
-def _retrieve(question: str, limit: int = 8, kind: str | None = None) -> list[dict]:
+def _retrieve(
+    question: str,
+    limit: int = 8,
+    kind: str | None = None,
+    sources: list[str] | None = None,
+) -> list[dict]:
     vector = embeddings.embed_query(question)
     store.ensure_collection(len(vector))
-    return store.search(vector, limit=limit, kind=kind)
+    return store.search(vector, limit=limit, kind=kind, sources=sources)
 
 
-def basic(question: str) -> dict:
-    hits = _retrieve(question, kind="text")
+def basic(question: str, sources: list[str] | None = None) -> dict:
+    hits = _retrieve(question, kind="text", sources=sources)
     answer = llm.answer_with_citations(question, hits)
-    return {"mode": "basic", "answer": answer, "sources": hits}
+    return {"mode": "basic", "answer": answer, "sources": hits, "scoped_to": sources or []}
 
 
-def multimodal(question: str) -> dict:
-    hits = _retrieve(question, limit=10)
+def multimodal(question: str, sources: list[str] | None = None) -> dict:
+    hits = _retrieve(question, limit=10, sources=sources)
     answer = llm.answer_with_citations(
         question,
         hits,
         mode_note="Some context comes from images; cite those as [image.png · image].",
     )
-    return {"mode": "multimodal", "answer": answer, "sources": hits}
+    return {"mode": "multimodal", "answer": answer, "sources": hits, "scoped_to": sources or []}
 
 
 def _plan(question: str) -> list[str]:
@@ -57,12 +64,12 @@ def _plan(question: str) -> list[str]:
     return subs[:MAX_SUB_QUESTIONS] or [question]
 
 
-def agentic(question: str) -> dict:
+def agentic(question: str, sources: list[str] | None = None) -> dict:
     sub_questions = _plan(question)
     all_hits: dict[tuple, dict] = {}
     per_sub = []
     for sub in sub_questions:
-        hits = _retrieve(sub, limit=8)
+        hits = _retrieve(sub, limit=8, sources=sources)
         for h in hits:
             key = (h.get("source"), h.get("page"), h.get("chunk"))
             if key not in all_hits or h["score"] > all_hits[key]["score"]:
@@ -82,4 +89,10 @@ def agentic(question: str) -> dict:
         "unique_sources": len({h["source"] for h in contexts}),
         "chunks_considered": len(contexts),
     }
-    return {"mode": "agentic", "answer": answer, "sources": contexts, "coverage": coverage}
+    return {
+        "mode": "agentic",
+        "answer": answer,
+        "sources": contexts,
+        "coverage": coverage,
+        "scoped_to": sources or [],
+    }

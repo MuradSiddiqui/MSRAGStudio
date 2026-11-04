@@ -128,6 +128,8 @@ def delete_document(name: str):
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     mode: Literal["basic", "multimodal", "agentic"] = "basic"
+    # Empty / omitted = search the whole index. Non-empty = only these filenames.
+    sources: list[str] = Field(default_factory=list, max_length=100)
 
 
 @app.post("/ask")
@@ -135,9 +137,10 @@ def ask(req: AskRequest):
     question = req.question.strip()
     if not question:
         raise HTTPException(422, "The question is empty.")
+    sources = [s.strip() for s in req.sources if isinstance(s, str) and s.strip()][:100] or None
     fn = {"basic": modes.basic, "multimodal": modes.multimodal, "agentic": modes.agentic}[req.mode]
     try:
-        result = fn(question)
+        result = fn(question, sources=sources)
     except Exception as exc:  # noqa: BLE001
         raise _fail(exc, "Answering") from exc
     _sessions[(req.mode, question)] = result
