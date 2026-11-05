@@ -2,27 +2,31 @@
 
 Cited question answering over your own documents and drawings.
 
-MS RAG Studio indexes PDFs, Word files, plain text, and images, then answers in three retrieval modes — **Basic**, **Multimodal**, and **Agentic** — with inline citations back to the page or image that supports each claim.
+Indexes PDFs, Word files, text, and images, then answers in **Basic**, **Multimodal**, or **Agentic** mode with citations back to the supporting page or image.
 
 **Live demo:** [ms-rag-studio-muradsiddiqui.vercel.app](https://ms-rag-studio-muradsiddiqui.vercel.app)
 
-![Landing](docs/images/landing-hero.png)
+![Landing — hero and Agentic preview](docs/images/01-landing.jpg)
 
 ---
 
-## Features
+## Modes
 
 | Mode | Behaviour |
 | --- | --- |
-| **Basic** | Dense retrieval over text chunks; answers with page citations |
-| **Multimodal** | Same index including vision-described images; cites `[file · image]` |
-| **Agentic** | Plans sub-questions, retrieves per step, returns a coverage report |
+| **Basic** | Dense retrieval over text; page-level citations |
+| **Multimodal** | Text + vision-described images; cites `[file · image]` |
+| **Agentic** | Plans sub-questions, retrieves per step, returns coverage |
 
-Also included: document library with ask-scope (limit a query to selected files), session history, Markdown report export, and light / dark / system theme.
+Also: ask-scope (limit a query to selected library files), history, Markdown export, light / dark / system theme.
 
-![Studio](docs/images/studio.png)
+![Three retrieval modes](docs/images/02-modes.jpg)
 
-![Pipeline](docs/images/how-it-works.png)
+![Upload → ask → verify → export](docs/images/03-how-it-works.jpg)
+
+![Studio — Basic answer with citations](docs/images/04-studio-basic.jpg)
+
+![Studio — Multimodal answer from a floor plan](docs/images/05-studio-multimodal.jpg)
 
 ---
 
@@ -39,26 +43,24 @@ FastAPI (Railway)  ──►  BGE embeddings (local)
    Qdrant Cloud
 ```
 
-n8n workflows under `n8n/` are optional for batch ingestion and scheduled jobs. They are not required for the interactive Studio path.
+n8n under `n8n/` is optional batch/scheduling only — not required for the Studio path.
 
 | Layer | Runtime | Notes |
 | --- | --- | --- |
-| UI | Vercel · `frontend/` | Set `NEXT_PUBLIC_API_URL` to the API origin |
-| API | Railway (or similar) · `backend/` | Long-running Python process; ≥2 GB RAM recommended |
+| UI | Vercel · `frontend/` | `NEXT_PUBLIC_API_URL` → API origin |
+| API | Railway · `backend/` | Persistent Python; ≥2 GB RAM |
 | Vectors | Qdrant Cloud | Collection `msrag_chunks` |
-| LLMs | Groq + Gemini | Keys via `MSRAG_*` env vars |
-
-The embedding model cannot run on Vercel serverless; keep the API on a host that supports Docker / persistent Python.
+| LLMs | Groq + Gemini | Via `MSRAG_*` env vars |
 
 ---
 
 ## Repository layout
 
 ```
-frontend/          Next.js 14 app (Studio + marketing pages)
-backend/           FastAPI: upload, ingest, ask, report
-data/demo/         Sample documents for local checks
-docs/images/       README screenshots
+frontend/          Next.js app
+backend/           FastAPI (upload, ingest, ask, report)
+data/demo/         Sample documents
+docs/images/       Screenshots
 n8n/workflows/     Optional automation
 Dockerfile         Production image (repo root → backend)
 ```
@@ -67,30 +69,25 @@ Dockerfile         Production image (repo root → backend)
 
 ## Local development
 
-**Prerequisites:** Python 3.11+, Node 18+, API keys for Groq, Qdrant, and (for images) Gemini.
+Python 3.11+, Node 18+, keys for Groq, Qdrant, and Gemini (images).
 
 ```bash
-# API
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # fill MSRAG_* values
+cp .env.example .env   # fill MSRAG_*
 uvicorn app.main:app --reload --port 8000
 ```
 
 ```bash
-# UI — proxies /backend/* to localhost:8000 when NEXT_PUBLIC_API_URL is unset
 cd frontend
-npm install
-npm run dev
+npm install && npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Confirm `GET /health` returns `model_ready: true` before the first upload (first boot downloads BGE).
-
-Optional local Qdrant / n8n:
+Open [http://localhost:3000](http://localhost:3000). Wait until `GET /health` shows `model_ready: true` before uploading.
 
 ```bash
-docker compose up -d
+docker compose up -d   # optional local Qdrant / n8n
 ```
 
 ---
@@ -99,31 +96,26 @@ docker compose up -d
 
 ### API (Railway)
 
-1. Connect this GitHub repo; build uses the root `Dockerfile`.
-2. Set variables from `backend/.env.example` (`MSRAG_GROQ_API_KEY`, `MSRAG_QDRANT_URL`, `MSRAG_QDRANT_API_KEY`, `MSRAG_EMBED_MODEL`, `MSRAG_GEMINI_API_KEY`, `MSRAG_VISION_PROVIDER`).
-3. Publish a public HTTPS domain.
-4. Ensure the Qdrant API key allows Railway’s egress (no home-IP-only restriction).
-
-Health check: `https://<api-host>/health`
+1. Deploy this repo (root `Dockerfile`).
+2. Set vars from `backend/.env.example`.
+3. Generate a public HTTPS domain.
+4. Use a Qdrant key that allows Railway egress (not IP-locked to a home network).
 
 ### UI (Vercel)
 
 | Setting | Value |
 | --- | --- |
 | Root Directory | `frontend` |
-| Framework | Next.js |
-| Env | `NEXT_PUBLIC_API_URL=https://<api-host>` |
-| Env (optional) | `NEXT_PUBLIC_SITE_URL=https://<your-vercel-domain>` |
+| `NEXT_PUBLIC_API_URL` | `https://<api-host>` |
+| `NEXT_PUBLIC_SITE_URL` | optional canonical site URL |
 
-Redeploy after changing env vars so `NEXT_PUBLIC_*` values are baked into the client bundle.
-
-CORS on the API already allows `*.vercel.app` and localhost. Add custom domains in `backend/app/main.py` if needed.
+Redeploy after env changes. CORS allows `*.vercel.app` and localhost; extend in `backend/app/main.py` for custom domains.
 
 ---
 
-## Configuration reference
+## Configuration
 
-See `backend/.env.example` and `frontend/.env.example`. Never commit real `.env` files.
+See `backend/.env.example` and `frontend/.env.example`. Do not commit secrets.
 
 | Variable | Purpose |
 | --- | --- |
