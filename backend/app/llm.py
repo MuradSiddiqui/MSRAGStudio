@@ -152,6 +152,7 @@ def answer_with_citations(question: str, contexts: list[dict], mode_note: str = 
         "You answer strictly from the provided context. Cite sources inline exactly as they "
         "are labelled in the context, like [file.pdf · p.3] or [plan.png · image]. "
         "Use Markdown for structure (short paragraphs, bullet lists, tables when useful). "
+        "Write formulas in LaTeX: \\( ... \\) inline and \\[ ... \\] on their own line. "
         "If the context does not contain the answer, say so honestly. "
         + mode_note
     )

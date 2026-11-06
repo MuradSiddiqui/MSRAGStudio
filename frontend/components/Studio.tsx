@@ -458,9 +458,9 @@ export default function Studio() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         {/* Sidebar */}
-        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+        <aside className="min-w-0 space-y-6 lg:sticky lg:top-24 lg:self-start">
           <div className="card p-4">
             <UploadZone
               documents={documents}
@@ -551,13 +551,13 @@ export default function Studio() {
                     role="radio"
                     aria-checked={active}
                     onClick={() => setMode(m)}
-                    className={`rounded-xl px-3 py-2.5 text-left transition-colors ${
+                    className={`min-w-0 rounded-xl px-2 py-2.5 text-left transition-colors sm:px-3 ${
                       active ? "bg-ink text-canvas" : "hover:bg-raised"
                     }`}
                   >
-                    <span className="flex items-center gap-2 text-sm font-medium">
-                      <span className={`h-2 w-2 rounded-full ${t.dot}`} />
-                      {t.short}
+                    <span className="flex items-center gap-1.5 text-[13px] font-medium sm:gap-2 sm:text-sm">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${t.dot}`} />
+                      <span className="truncate">{t.short}</span>
                     </span>
                     <span
                       className={`mt-0.5 hidden text-xs sm:block ${active ? "text-canvas/60" : "text-muted"}`}
@@ -612,7 +612,7 @@ export default function Studio() {
                     key={name}
                     type="button"
                     onClick={() => toggleScope(name)}
-                    className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-line bg-raised px-2 py-0.5 text-[11px] text-ink"
+                    className="inline-flex min-w-0 max-w-[180px] items-center gap-1 rounded-full border border-line bg-raised px-2 py-0.5 text-[11px] text-ink"
                     title={`Remove ${name} from scope`}
                   >
                     <span className="truncate">{name}</span>
@@ -684,7 +684,7 @@ export default function Studio() {
                       setQuestion(s);
                       textareaRef.current?.focus();
                     }}
-                    className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-muted transition-colors hover:border-faint hover:text-ink"
+                    className="max-w-full rounded-full border border-line bg-surface px-3 py-1.5 text-left text-xs text-muted transition-colors hover:border-faint hover:text-ink"
                   >
                     {s}
                   </button>
@@ -725,9 +725,9 @@ export default function Studio() {
           {error && !asking && (
             <div className="flex animate-fade-up items-start gap-3 rounded-2xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <p className="font-medium">The request failed</p>
-                <p className="mt-0.5 text-muted">{error}</p>
+                <p className="mt-0.5 break-words text-muted">{error}</p>
               </div>
               <button type="button" onClick={handleAsk} className="btn-ghost py-1 text-xs">
                 Retry
@@ -755,7 +755,7 @@ export default function Studio() {
           )}
 
           {!current && !asking && !error && (
-            <div className="rounded-2xl border border-dashed border-line px-6 py-14 text-center">
+            <div className="rounded-2xl border border-dashed border-line px-5 py-10 text-center sm:px-6 sm:py-14">
               <p className="font-display text-2xl font-semibold tracking-tight">
                 {noDocs ? (
                   <>

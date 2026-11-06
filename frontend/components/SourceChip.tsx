@@ -61,7 +61,7 @@ const SourceChip = forwardRef<HTMLDivElement, Props>(function SourceChip(
         />
       </button>
       {open && (
-        <p className="animate-fade-up whitespace-pre-wrap border-t border-line bg-canvas/60 px-4 py-3 text-sm leading-relaxed text-muted">
+        <p className="animate-fade-up whitespace-pre-wrap break-words border-t border-line bg-canvas/60 px-4 py-3 text-sm leading-relaxed text-muted">
           {hit.text}
         </p>
       )}

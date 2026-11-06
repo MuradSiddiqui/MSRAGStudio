@@ -43,6 +43,12 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* clip, not hidden: hidden would break position: sticky on the header and sidebar */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     @apply bg-canvas font-sans text-ink antialiased;
     font-feature-settings: "ss01", "cv11";
@@ -136,6 +142,17 @@
 /* Answer typography for rendered Markdown. */
 .prose-answer {
   @apply text-[15px] leading-7 text-ink;
+  overflow-wrap: anywhere;
+}
+.prose-answer .katex {
+  font-size: 1.08em;
+  overflow-wrap: normal;
+}
+.prose-answer .katex-display {
+  @apply my-4 overflow-x-auto overflow-y-hidden rounded-xl bg-raised/60 px-3 py-3;
+}
+.prose-answer .katex-display > .katex {
+  @apply text-[1.15em];
 }
 .prose-answer > * + * {
   @apply mt-3;

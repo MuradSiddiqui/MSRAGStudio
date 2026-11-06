@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { Check, Copy, Download, FileDown, Clock } from "lucide-react";
 import { sourceLocation, type AskResult, type Mode } from "@/lib/api";
 import { MODES, MODE_THEMES } from "@/lib/theme";
@@ -27,6 +30,17 @@ function linkCitations(text: string) {
     (_, label: string) =>
       `[${label}](${CITE_PREFIX}${encodeURIComponent(label).replace(/\(/g, "%28").replace(/\)/g, "%29")})`
   );
+}
+
+/**
+ * Models write LaTeX as \[...\] and \(...\), but Markdown treats "\[" and "\;"
+ * as escapes and strips the backslashes. Rewrite them to remark-math's $$ syntax
+ * first; single "$" stays plain text so prices like $50 are not parsed as math.
+ */
+function normalizeMath(text: string) {
+  return text
+    .replace(/\\\[([\s\S]+?)\\\]/g, (_, tex: string) => `\n\n$$\n${tex.trim()}\n$$\n\n`)
+    .replace(/\\\(([\s\S]+?)\\\)/g, (_, tex: string) => `$$${tex.trim()}$$`);
 }
 
 /** Finds the source row a citation label like "plan.png · image" refers to. */
@@ -68,7 +82,7 @@ export default function AnswerPanel({
     return () => clearTimeout(t);
   }, [highlight]);
 
-  const markdown = useMemo(() => linkCitations(result.answer), [result.answer]);
+  const markdown = useMemo(() => linkCitations(normalizeMath(result.answer)), [result.answer]);
   const visibleSources = showAll ? result.sources : result.sources.slice(0, 6);
   const uniqueFiles = new Set(result.sources.map((s) => s.source)).size;
 
@@ -94,7 +108,7 @@ export default function AnswerPanel({
 
   return (
     <section className="card animate-fade-up overflow-hidden" aria-label="Answer">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-line px-4 py-3 sm:px-5">
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] font-medium ${theme.softBg} ${theme.text}`}
         >
@@ -113,26 +127,27 @@ export default function AnswerPanel({
             <Clock className="h-3 w-3" /> {(elapsedMs / 1000).toFixed(1)}s
           </span>
         )}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="flex w-full items-center gap-1 sm:ml-auto sm:w-auto">
           <button type="button" onClick={() => copy("answer")} className="btn-quiet py-1.5 text-xs">
             {copied === "answer" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             {copied === "answer" ? "Copied" : "Copy"}
           </button>
           <button type="button" onClick={() => copy("report")} className="btn-quiet py-1.5 text-xs">
             {copied === "report" ? <Check className="h-3.5 w-3.5" /> : <FileDown className="h-3.5 w-3.5" />}
-            {copied === "report" ? "Copied" : "Copy report"}
+            {copied === "report" ? "Copied" : "Report"}
           </button>
-          <button type="button" onClick={onDownload} className="btn-ghost py-1.5 text-xs">
+          <button type="button" onClick={onDownload} className="btn-ghost ml-auto py-1.5 text-xs sm:ml-0">
             <Download className="h-3.5 w-3.5" /> .md
           </button>
         </div>
       </div>
 
-      <div className="px-5 py-6 sm:px-7">
-        <h2 className="font-display text-xl font-semibold tracking-tight">{question}</h2>
+      <div className="px-4 py-6 sm:px-7">
+        <h2 className="break-words font-display text-lg font-semibold tracking-tight sm:text-xl">{question}</h2>
         <div className="prose-answer mt-4">
           <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
+            remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }]]}
+            rehypePlugins={[rehypeKatex]}
             components={{
               a: ({ href, children }) => {
                 if (href?.startsWith(CITE_PREFIX)) {
@@ -141,7 +156,7 @@ export default function AnswerPanel({
                     <button
                       type="button"
                       onClick={() => focusSource(label)}
-                      className="cite mx-0.5 inline-flex max-w-full items-center rounded-md border border-line bg-raised px-1.5 align-baseline font-mono text-[11px] leading-5 text-muted transition-colors hover:border-faint hover:text-ink"
+                      className="cite mx-0.5 inline-flex min-w-0 max-w-full items-center rounded-md border border-line bg-raised px-1.5 align-baseline font-mono text-[11px] leading-5 text-muted transition-colors hover:border-faint hover:text-ink"
                       title="Show the passage"
                     >
                       <span className="truncate">{children}</span>
@@ -162,8 +177,8 @@ export default function AnswerPanel({
       </div>
 
       {coverage && (
-        <div className="border-t border-line px-5 py-6 sm:px-7">
-          <div className="flex items-baseline justify-between gap-4">
+        <div className="border-t border-line px-4 py-6 sm:px-7">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h3 className="font-display text-base font-semibold">Coverage report</h3>
             <p className="text-xs text-muted">Checked the whole index, not just the top matches</p>
           </div>
@@ -183,7 +198,7 @@ export default function AnswerPanel({
             {coverage.sub_questions.map((step, i) => (
               <li key={i} className="flex items-baseline gap-3 px-3.5 py-2.5 text-sm">
                 <span className={`font-mono text-xs ${theme.text}`}>{String(i + 1).padStart(2, "0")}</span>
-                <span className="flex-1">{step.sub_question}</span>
+                <span className="min-w-0 flex-1 break-words">{step.sub_question}</span>
                 <span
                   className={`shrink-0 font-mono text-[11px] ${step.found === 0 ? "text-danger" : "text-muted"}`}
                 >
@@ -196,7 +211,7 @@ export default function AnswerPanel({
       )}
 
       {result.sources.length > 0 && (
-        <div className="border-t border-line px-5 py-6 sm:px-7">
+        <div className="border-t border-line px-4 py-6 sm:px-7">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-base font-semibold">Sources</h3>
             <button
@@ -246,7 +261,7 @@ export default function AnswerPanel({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-line bg-canvas/50 px-5 py-3 sm:px-7">
+      <div className="flex flex-wrap items-center gap-2 border-t border-line bg-canvas/50 px-4 py-3 sm:px-7">
         <span className="text-xs text-muted">Compare with</span>
         {MODES.filter((m) => m !== result.mode).map((m) => (
           <button
