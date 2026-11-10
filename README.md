@@ -2,7 +2,7 @@
 
 Cited question answering over your own documents and drawings.
 
-Indexes PDFs, Word files, text, and images, then answers in **Basic**, **Multimodal**, or **Agentic** mode with citations back to the supporting page or image.
+Indexes PDFs, Word files, text, and images, then answers in **Basic**, **Multimodal**, **Agentic**, or **STAIR** mode with citations back to the supporting page, section, or image.
 
 **Live demo:** [ms-rag-studio-muradsiddiqui.vercel.app](https://ms-rag-studio-muradsiddiqui.vercel.app)
 
@@ -17,6 +17,7 @@ Indexes PDFs, Word files, text, and images, then answers in **Basic**, **Multimo
 | **Basic** | Dense retrieval over text; page-level citations |
 | **Multimodal** | Text + vision-described images; cites `[file · image]` |
 | **Agentic** | Plans sub-questions, retrieves per step, returns coverage |
+| **STAIR** | Structure-aware: reads the table of contents, opens the section that should hold the answer, reads it in full; citations name the section |
 
 Also: ask-scope (limit a query to selected library files), history, Markdown export, light / dark / system theme.
 

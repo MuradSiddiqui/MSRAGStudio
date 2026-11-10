@@ -5,6 +5,7 @@ import {
   FileText,
   Image as ImageIcon,
   ListChecks,
+  ListTree,
   ScanSearch,
 } from "lucide-react";
 import HowItWorks from "@/components/HowItWorks";
@@ -47,12 +48,24 @@ const MODE_CARDS = [
       "For questions where missing one item means a wrong answer. Plans sub-questions, retrieves for each, then reports coverage.",
     points: ["Plan steps with hit counts", "Coverage across the whole index", "Built for list-all questions"],
   },
+  {
+    mode: "stair" as const,
+    index: "04",
+    name: "STAIR",
+    dot: "bg-stair",
+    text: "text-stair",
+    Icon: ListTree,
+    description:
+      "Structure-aware retrieval, after IBM's STAIR. Reads the table of contents first, opens the section that should hold the answer, and reads it in full.",
+    points: ["Table-of-contents navigation", "Whole sections, not top-k samples", "Citations carry the section name"],
+  },
 ];
 
 const STACK = [
   { name: "Next.js", role: "Studio UI" },
   { name: "FastAPI", role: "Upload, ask, report API" },
   { name: "Qdrant", role: "Vector search" },
+  { name: "STAIR", role: "Structure-aware section retrieval" },
   { name: "Groq", role: "gpt-oss-120b answers, gpt-oss-20b planning" },
   { name: "Gemini / Llama 4", role: "Image understanding" },
   { name: "BGE small", role: "Local embeddings" },
@@ -169,18 +182,18 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <p className="eyebrow">Three modes, one index</p>
+              <p className="eyebrow">Four modes, one index</p>
               <h2 className="mt-3 max-w-xl font-display text-4xl font-semibold tracking-tight">
                 Pick the mode that fits <span className="font-serif font-normal italic">the question.</span>
               </h2>
             </div>
             <p className="max-w-sm text-muted">
-              All three search the same uploaded files. They differ in how much of the
+              All four search the same uploaded files. They differ in how much of the
               index they read before they answer.
             </p>
           </div>
 
-          <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
+          <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-2 xl:grid-cols-4">
             {MODE_CARDS.map(({ mode, index, name, dot, text, Icon, description, points }) => (
               <Link
                 key={mode}

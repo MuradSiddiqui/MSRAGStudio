@@ -8,7 +8,7 @@
  *   next.config.mjs, which forwards to http://localhost:8000.
  */
 
-export type Mode = "basic" | "multimodal" | "agentic";
+export type Mode = "basic" | "multimodal" | "agentic" | "stair";
 
 /** POST /files response. */
 export interface UploadResult {
@@ -31,6 +31,10 @@ export interface SourceHit {
   chunk?: number;
   /** "text" for document chunks, "image" for vision-described image chunks. */
   kind?: string;
+  /** Leaf section heading the chunk belongs to (structure-aware indexing). */
+  section?: string;
+  /** Full section breadcrumb, e.g. "§4 Fire protection > §4.2 Doors". */
+  section_path?: string;
   text: string;
   score: number;
 }
@@ -42,12 +46,22 @@ export interface Coverage {
   chunks_considered: number;
 }
 
-/** POST /ask response. `coverage` is present only in agentic mode. */
+/** STAIR mode only: how the table of contents was navigated. */
+export interface StructureReport {
+  navigated: boolean;
+  reason: string;
+  toc_sections: number;
+  chosen: { source: string; section: string; section_path: string; chunks: number }[];
+}
+
+/** POST /ask response. `coverage` is present only in agentic mode,
+ *  `structure` only in stair mode. */
 export interface AskResult {
   mode: Mode;
   answer: string;
   sources: SourceHit[];
   coverage?: Coverage;
+  structure?: StructureReport;
   /** Filenames the search was limited to; empty means the whole index. */
   scoped_to?: string[];
 }
@@ -168,8 +182,10 @@ export async function askQuestion(
   return res.json();
 }
 
-export function sourceLocation(hit: Pick<SourceHit, "kind" | "page">) {
-  return hit.kind === "image" ? "image" : `p.${hit.page ?? "-"}`;
+export function sourceLocation(hit: Pick<SourceHit, "kind" | "page" | "section">) {
+  if (hit.kind === "image") return "image";
+  const page = `p.${hit.page ?? "-"}`;
+  return hit.section ? `${hit.section} · ${page}` : page;
 }
 
 /** Markdown report built from an answer, so it works for history items too. */
@@ -207,6 +223,22 @@ export function buildReport(question: string, result: AskResult): string {
         (s, i) => `${i + 1}. ${s.sub_question} (${s.found} found)`
       )
     );
+  }
+  if (result.structure) {
+    const st = result.structure;
+    lines.push("", "## Structure (STAIR)", "");
+    if (st.navigated) {
+      lines.push(
+        `Sections in scope: ${st.toc_sections}`,
+        ...(st.reason ? [`Navigation: ${st.reason}`] : []),
+        "",
+        ...st.chosen.map(
+          (ch) => `- ${ch.source} · ${ch.section_path} (${ch.chunks} chunks read in full)`
+        )
+      );
+    } else {
+      lines.push(st.reason);
+    }
   }
   return lines.join("\n");
 }

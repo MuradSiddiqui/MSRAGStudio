@@ -5,7 +5,7 @@ import Studio from "@/components/Studio";
 export const metadata: Metadata = {
   title: "Studio",
   description:
-    "Upload documents and images, ask in three retrieval modes, and download cited reports.",
+    "Upload documents and images, ask in four retrieval modes, and download cited reports.",
 };
 
 export default function StudioPage() {

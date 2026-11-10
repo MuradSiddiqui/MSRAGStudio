@@ -25,6 +25,9 @@ const SourceChip = forwardRef<HTMLDivElement, Props>(function SourceChip(
 ) {
   const isImage = hit.kind === "image";
   const score = Math.max(0, Math.min(100, Math.round((hit.score ?? 0) * 100)));
+  // STAIR section chunks are chosen by membership, not similarity: their
+  // score is 0 and a percentage bar would read as a failed match.
+  const inSection = Boolean(hit.section) && (hit.score ?? 0) === 0;
   const Icon = isImage ? ImageIcon : FileText;
 
   return (
@@ -50,12 +53,18 @@ const SourceChip = forwardRef<HTMLDivElement, Props>(function SourceChip(
           <span className="font-medium">{hit.source}</span>
           <span className="font-mono text-xs text-faint"> · {sourceLocation(hit)}</span>
         </span>
-        <span className="hidden shrink-0 items-center gap-2 sm:flex" title={`${score}% similarity`}>
-          <span className="h-1 w-14 overflow-hidden rounded-full bg-raised">
-            <span className={`block h-full rounded-full ${theme.bar}`} style={{ width: `${score}%` }} />
+        {inSection ? (
+          <span className="hidden shrink-0 font-mono text-[11px] text-muted sm:block">
+            read in full
           </span>
-          <span className="w-8 text-right font-mono text-[11px] text-muted">{score}%</span>
-        </span>
+        ) : (
+          <span className="hidden shrink-0 items-center gap-2 sm:flex" title={`${score}% similarity`}>
+            <span className="h-1 w-14 overflow-hidden rounded-full bg-raised">
+              <span className={`block h-full rounded-full ${theme.bar}`} style={{ width: `${score}%` }} />
+            </span>
+            <span className="w-8 text-right font-mono text-[11px] text-muted">{score}%</span>
+          </span>
+        )}
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
         />

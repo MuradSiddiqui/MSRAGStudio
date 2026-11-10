@@ -14,13 +14,19 @@ def ingest_file(path: str) -> dict:
                 "source": name,
                 "page": 0,
                 "chunk": 0,
+                "section": "",
+                "section_path": "",
                 "kind": "image",
                 "text": description,
             }
         ] if description.strip() else []
     else:
         pages = extract.extract_text(path)
-        chunks = [{**c, "kind": "text"} for c in chunking.chunk_pages(pages, name)]
+        outline = extract.extract_outline(path)
+        chunks = [
+            {**c, "kind": "text"}
+            for c in chunking.chunk_pages(pages, name, outline=outline)
+        ]
     if not chunks:
         return {"file": name, "chunks": 0}
     vectors = embeddings.embed([c["text"] for c in chunks])

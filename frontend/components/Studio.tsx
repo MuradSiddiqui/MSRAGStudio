@@ -48,6 +48,11 @@ const SUGGESTIONS: Record<Mode, string[]> = {
     "List all open risks mentioned across the files",
     "Which doors must be fire-rated according to the code, and which appear on the plan?",
   ],
+  stair: [
+    "Which doors must be fire-rated?",
+    "What does the section on escape routes require?",
+    "Which requirements sit in the fire protection chapter?",
+  ],
 };
 
 interface HistoryEntry {
@@ -150,7 +155,7 @@ export default function Studio() {
     const q = searchParams.get("q");
     if (q) setQuestion(q.slice(0, MAX_QUESTION));
     const m = searchParams.get("mode");
-    if (m === "basic" || m === "multimodal" || m === "agentic") setMode(m);
+    if (m === "basic" || m === "multimodal" || m === "agentic" || m === "stair") setMode(m);
   }, [searchParams]);
 
   // History persists across reloads.
@@ -539,7 +544,7 @@ export default function Studio() {
             <div
               role="radiogroup"
               aria-label="Retrieval mode"
-              className="grid grid-cols-3 gap-1 rounded-2xl border border-line bg-surface p-1"
+              className="grid grid-cols-2 gap-1 rounded-2xl border border-line bg-surface p-1 sm:grid-cols-4"
             >
               {MODES.map((m) => {
                 const t = MODE_THEMES[m];
@@ -600,7 +605,9 @@ export default function Studio() {
                   ? "Ask about text or images in scope…"
                   : mode === "agentic"
                     ? "Ask a list-all or coverage question…"
-                    : "Ask anything about the selected documents…"
+                    : mode === "stair"
+                      ? "Ask, and STAIR opens the section that holds it…"
+                      : "Ask anything about the selected documents…"
               }
               className="block max-h-[280px] w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none placeholder:text-faint"
             />
@@ -705,9 +712,15 @@ export default function Studio() {
                       : elapsed < 7000
                         ? "Retrieving for each sub-question…"
                         : "Checking coverage and writing the answer…"
-                    : elapsed < 1500
-                      ? "Searching the index…"
-                      : "Drafting a cited answer…"}
+                    : mode === "stair"
+                      ? elapsed < 2500
+                        ? "Reading the table of contents…"
+                        : elapsed < 6000
+                          ? "Opening the chosen section…"
+                          : "Writing the cited answer…"
+                      : elapsed < 1500
+                        ? "Searching the index…"
+                        : "Drafting a cited answer…"}
                 </span>
                 <span className="ml-auto font-mono text-xs text-faint">
                   {(elapsed / 1000).toFixed(1)}s

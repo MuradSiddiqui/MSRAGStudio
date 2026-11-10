@@ -1,7 +1,8 @@
 import type { Mode } from "./api";
 
 /**
- * Per-mode visual identity: orange for Basic, cyan for Multimodal, green for Agentic.
+ * Per-mode visual identity: orange for Basic, cyan for Multimodal, green for
+ * Agentic, amber for STAIR.
  * Colours come from CSS variables in globals.css so they adapt to light and dark.
  * All class strings are complete literals so Tailwind picks them up.
  */
@@ -18,7 +19,7 @@ export interface ModeTheme {
   bar: string;
 }
 
-export const MODES: Mode[] = ["basic", "multimodal", "agentic"];
+export const MODES: Mode[] = ["basic", "multimodal", "agentic", "stair"];
 
 export const MODE_THEMES: Record<Mode, ModeTheme> = {
   basic: {
@@ -56,5 +57,17 @@ export const MODE_THEMES: Record<Mode, ModeTheme> = {
     border: "border-agentic/30",
     ring: "focus-within:border-agentic/60 focus-within:ring-agentic/15",
     bar: "bg-agentic",
+  },
+  stair: {
+    label: "STAIR",
+    short: "STAIR",
+    tagline: "Contents first, then the section",
+    help: "Structure-aware retrieval, after IBM's STAIR: reads the documents' table of contents, opens the section that should hold the answer, and reads it in full. Citations name the section.",
+    dot: "bg-stair",
+    text: "text-stair",
+    softBg: "bg-stair/10",
+    border: "border-stair/30",
+    ring: "focus-within:border-stair/60 focus-within:ring-stair/15",
+    bar: "bg-stair",
   },
 };

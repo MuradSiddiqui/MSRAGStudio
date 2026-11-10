@@ -25,6 +25,7 @@ const config: Config = {
         basic: token("mode-basic"),
         multi: token("mode-multi"),
         agentic: token("mode-agentic"),
+        stair: token("mode-stair"),
         danger: token("danger"),
         success: token("success"),
       },

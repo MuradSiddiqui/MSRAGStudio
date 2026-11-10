@@ -1,4 +1,4 @@
-"""MS RAG Studio API: upload -> ingest -> ask (3 modes) -> report download."""
+"""MS RAG Studio API: upload -> ingest -> ask (4 modes) -> report download."""
 import logging
 import os
 import re
@@ -127,7 +127,7 @@ def delete_document(name: str):
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
-    mode: Literal["basic", "multimodal", "agentic"] = "basic"
+    mode: Literal["basic", "multimodal", "agentic", "stair"] = "basic"
     # Empty / omitted = search the whole index. Non-empty = only these filenames.
     sources: list[str] = Field(default_factory=list, max_length=100)
 
@@ -138,7 +138,12 @@ def ask(req: AskRequest):
     if not question:
         raise HTTPException(422, "The question is empty.")
     sources = [s.strip() for s in req.sources if isinstance(s, str) and s.strip()][:100] or None
-    fn = {"basic": modes.basic, "multimodal": modes.multimodal, "agentic": modes.agentic}[req.mode]
+    fn = {
+        "basic": modes.basic,
+        "multimodal": modes.multimodal,
+        "agentic": modes.agentic,
+        "stair": modes.stair,
+    }[req.mode]
     try:
         result = fn(question, sources=sources)
     except Exception as exc:  # noqa: BLE001
@@ -181,4 +186,17 @@ def report(question: str, mode: str | None = None):
         lines.append(f"Unique sources: {cov['unique_sources']}")
         for i, step in enumerate(cov["sub_questions"], 1):
             lines.append(f"{i}. {step['sub_question']} ({step['found']} found)")
+    if "structure" in result:
+        st = result["structure"]
+        lines += ["", "## Structure (STAIR)", ""]
+        if st.get("navigated"):
+            lines.append(f"Sections in scope: {st['toc_sections']}")
+            if st.get("reason"):
+                lines.append(f"Navigation: {st['reason']}")
+            for ch in st.get("chosen", []):
+                lines.append(
+                    f"- {ch['source']} · {ch['section_path']} ({ch['chunks']} chunks read in full)"
+                )
+        else:
+            lines.append(st.get("reason", "No table of contents available."))
     return "\n".join(lines)

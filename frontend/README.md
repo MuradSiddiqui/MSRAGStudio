@@ -5,12 +5,13 @@ built from the approved Figma design.
 
 ## Pages
 
-- `/` Landing page: the three modes, how it works, the building code demo
+- `/` Landing page: the four modes, how it works, the building code demo
   example, and the tech stack.
 - `/studio` Workspace: upload documents and images, ask questions in Basic,
-  Multimodal or Agentic mode, inspect cited sources, read the Agentic
-  coverage report, and download or copy the Markdown report.
-  Accepts `?mode=basic|multimodal|agentic` and `?q=<question>` to prefill.
+  Multimodal, Agentic or STAIR mode, inspect cited sources, read the Agentic
+  coverage report and the STAIR structure path, and download or copy the
+  Markdown report.
+  Accepts `?mode=basic|multimodal|agentic|stair` and `?q=<question>` to prefill.
 
 ## Run locally
 

@@ -20,7 +20,7 @@ _client = None
 _ready = False
 
 # Filtering on these fields requires a payload index on Qdrant Cloud (strict mode).
-_INDEXED_FIELDS = ("source", "kind")
+_INDEXED_FIELDS = ("source", "kind", "section_path")
 
 
 def client() -> QdrantClient:
@@ -135,3 +135,96 @@ def list_documents() -> list[dict]:
         if offset is None:
             break
     return sorted(docs.values(), key=lambda d: d["name"].lower())
+
+
+def list_sections(sources: list[str] | None = None) -> list[dict]:
+    """The table of contents of the index: every distinct section_path with
+    its chunk count and page span, in document order per source.
+
+    Only text chunks indexed by the structure-aware pipeline carry a
+    section; chunks from before it (and image chunks) are invisible here,
+    which is exactly what STAIR's fallback logic keys on.
+    """
+    if not collection_exists():
+        return []
+    scroll_filter = None
+    if sources:
+        scroll_filter = Filter(
+            must=[FieldCondition(key="source", match=MatchAny(any=sources))]
+        )
+    agg: dict[tuple[str, str], dict] = {}
+    offset = None
+    while True:
+        points, offset = client().scroll(
+            collection_name=settings.collection,
+            scroll_filter=scroll_filter,
+            limit=1000,
+            offset=offset,
+            with_payload=["source", "kind", "section", "section_path", "page"],
+            with_vectors=False,
+        )
+        for p in points:
+            payload = p.payload or {}
+            path = payload.get("section_path") or ""
+            if not path or payload.get("kind") == "image":
+                continue
+            key = (payload.get("source", "unknown"), path)
+            entry = agg.setdefault(
+                key,
+                {
+                    "source": key[0],
+                    "section": payload.get("section", ""),
+                    "section_path": path,
+                    "chunks": 0,
+                    "pages": set(),
+                },
+            )
+            entry["chunks"] += 1
+            if isinstance(payload.get("page"), int):
+                entry["pages"].add(payload["page"])
+        if offset is None:
+            break
+    out = []
+    for entry in agg.values():
+        pages = sorted(entry.pop("pages"))
+        entry["page_from"] = pages[0] if pages else None
+        entry["page_to"] = pages[-1] if pages else None
+        out.append(entry)
+    return sorted(out, key=lambda e: (e["source"].lower(), e["page_from"] or 0, e["section_path"]))
+
+
+def fetch_section_chunks(
+    source: str, section_path: str, limit: int = 256
+) -> list[dict]:
+    """Every chunk of one section, in document order (page, then chunk).
+
+    STAIR reads the whole chosen section instead of a top-k sample, so
+    this is a payload-filtered scroll, not a vector search. Returned hits
+    carry score 0.0: membership in the section, not similarity, selected
+    them.
+    """
+    if not collection_exists():
+        return []
+    scroll_filter = Filter(
+        must=[
+            FieldCondition(key="source", match=MatchValue(value=source)),
+            FieldCondition(key="section_path", match=MatchValue(value=section_path)),
+        ]
+    )
+    found: list[dict] = []
+    offset = None
+    while len(found) < limit:
+        points, offset = client().scroll(
+            collection_name=settings.collection,
+            scroll_filter=scroll_filter,
+            limit=min(256, limit - len(found)),
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
+        )
+        for p in points:
+            found.append({"score": 0.0, **(p.payload or {})})
+        if offset is None:
+            break
+    found.sort(key=lambda c: (c.get("page") or 0, c.get("chunk") or 0))
+    return found

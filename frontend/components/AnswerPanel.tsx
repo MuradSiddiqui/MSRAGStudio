@@ -64,6 +64,7 @@ export default function AnswerPanel({
 }: Props) {
   const theme = MODE_THEMES[result.mode];
   const coverage = result.coverage;
+  const structure = result.structure;
   const [open, setOpen] = useState<Set<number>>(new Set());
   const [highlight, setHighlight] = useState<number | null>(null);
   const [copied, setCopied] = useState<"answer" | "report" | null>(null);
@@ -207,6 +208,55 @@ export default function AnswerPanel({
               </li>
             ))}
           </ol>
+        </div>
+      )}
+
+      {structure && (
+        <div className="border-t border-line px-4 py-6 sm:px-7">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h3 className="font-display text-base font-semibold">Structure path</h3>
+            <p className="text-xs text-muted">Contents first, then the whole section</p>
+          </div>
+          {structure.navigated ? (
+            <>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {[
+                  [structure.toc_sections, "sections in scope"],
+                  [structure.chosen.length, "sections opened"],
+                  [
+                    structure.chosen.reduce((n, c) => n + c.chunks, 0),
+                    "chunks read in full",
+                  ],
+                ].map(([value, label]) => (
+                  <div key={label} className="rounded-xl bg-raised px-3 py-3">
+                    <p className="font-display text-2xl font-semibold">{value}</p>
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted">{label}</p>
+                  </div>
+                ))}
+              </div>
+              {structure.reason && (
+                <p className="mt-3 text-sm text-muted">{structure.reason}</p>
+              )}
+              <ol className="mt-4 divide-y divide-line rounded-xl border border-line">
+                {structure.chosen.map((ch, i) => (
+                  <li key={i} className="flex items-baseline gap-3 px-3.5 py-2.5 text-sm">
+                    <span className={`font-mono text-xs ${theme.text}`}>{String(i + 1).padStart(2, "0")}</span>
+                    <span className="min-w-0 flex-1 break-words">
+                      <span className="font-medium">{ch.source}</span>
+                      <span className="text-muted"> · {ch.section_path}</span>
+                    </span>
+                    <span className="shrink-0 font-mono text-[11px] text-muted">
+                      {ch.chunks} chunks
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : (
+            <p className="mt-3 rounded-xl bg-raised px-3.5 py-3 text-sm text-muted">
+              {structure.reason}
+            </p>
+          )}
         </div>
       )}
 

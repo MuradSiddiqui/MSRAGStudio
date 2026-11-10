@@ -50,6 +50,9 @@ def chat(messages: list[dict], model: str | None = None, json_mode: bool = False
 def cite_label(c: dict) -> str:
     if c.get("kind") == "image":
         return f"[{c['source']} · image]"
+    section = c.get("section")
+    if section:
+        return f"[{c['source']} · {section} · p.{c.get('page', '-')}]"
     return f"[{c['source']} · p.{c.get('page', '-')}]"
 
 
