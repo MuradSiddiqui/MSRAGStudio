@@ -19,7 +19,11 @@ Indexes PDFs, Word files, text, and images, then answers in **Basic**, **Multimo
 | **Agentic** | Plans sub-questions, retrieves per step, returns coverage |
 | **STAIR** | Structure-aware: reads the table of contents, opens the section that should hold the answer, reads it in full; citations name the section |
 
-Also: ask-scope (limit a query to selected library files), history, Markdown export, light / dark / system theme.
+STAIR mode is inspired by IBM Research's [STAIR](https://arxiv.org/abs/2609.03874), a retriever that navigates a document's table of contents. It is a retrieval step inside RAG, not a replacement for it. IBM fine-tunes a model for the navigation; here an off-the-shelf LLM picks sections from the table of contents in the prompt, and the mode falls back to vector search when no section fits.
+
+Also: ask-scope (limit a query to selected library files), file preview, history, Markdown export, light / dark / system theme.
+
+Each browser gets its own private library: a random workspace id stored in the browser is sent with every request, and the API only returns that workspace's files. There are no accounts, so clearing site data starts an empty library. API calls without the `X-Workspace-Id` header (n8n, curl) use a shared `default` workspace.
 
 ![Three retrieval modes](docs/images/02-modes.jpg)
 

@@ -44,14 +44,21 @@ function normalizeMath(text: string) {
 }
 
 /** Finds the source row a citation label like "plan.png · image" refers to. */
+/** Models sometimes write citations with typographic hyphens or spaces
+ *  (U+2011, U+2013, U+00A0), so compare on a plain-ASCII form. */
+function loose(text: string) {
+  return text.replace(/[\u2010-\u2015\u2212]/g, "-").replace(/[\u00a0\u202f]/g, " ").trim();
+}
+
 function matchSource(label: string, result: AskResult): number {
   const first = label.split(/[;,]\s*(?=[^·]+ · )/)[0];
-  const [file, where] = first.split(" · ").map((s) => s.trim());
+  const [file, ...rest] = loose(first).split(" · ").map((s) => s.trim());
+  const where = rest.join(" · ");
   const exact = result.sources.findIndex(
-    (s) => s.source === file && sourceLocation(s) === where
+    (s) => loose(s.source) === file && loose(sourceLocation(s)) === where
   );
   if (exact !== -1) return exact;
-  return result.sources.findIndex((s) => s.source === file);
+  return result.sources.findIndex((s) => loose(s.source) === file);
 }
 
 export default function AnswerPanel({

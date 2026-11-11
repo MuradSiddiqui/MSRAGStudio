@@ -124,10 +124,41 @@ async function errorFrom(res: Response): Promise<Error> {
   return new Error(message);
 }
 
+const WORKSPACE_KEY = "msrag-workspace";
+let workspaceId: string | null = null;
+
+/** Random id for this browser; the backend shows each id only its own files.
+ *  Not an account: clearing site data starts an empty library. */
+export function getWorkspaceId(): string {
+  if (workspaceId) return workspaceId;
+  try {
+    const saved = localStorage.getItem(WORKSPACE_KEY);
+    if (saved && /^[A-Za-z0-9_-]{8,64}$/.test(saved)) {
+      workspaceId = saved;
+      return saved;
+    }
+  } catch {
+    // Storage blocked (private mode): fall through to a per-tab id.
+  }
+  const fresh =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+  workspaceId = fresh;
+  try {
+    localStorage.setItem(WORKSPACE_KEY, fresh);
+  } catch {
+    // Not persisted; the library lasts for this tab only.
+  }
+  return fresh;
+}
+
 async function request(path: string, init?: RequestInit): Promise<Response> {
   let res: Response;
+  const headers = new Headers(init?.headers);
+  headers.set("X-Workspace-Id", getWorkspaceId());
   try {
-    res = await fetch(`${BASE}${path}`, { cache: "no-store", ...init });
+    res = await fetch(`${BASE}${path}`, { cache: "no-store", ...init, headers });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new Error("Could not reach the backend. Is it running on port 8000?");
@@ -180,6 +211,29 @@ export async function askQuestion(
     signal: options?.signal,
   });
   return res.json();
+}
+
+export type Preview =
+  | { kind: "file"; name: string; url: string; mime: string }
+  | { kind: "image"; name: string; stored: false; description: string }
+  | {
+      kind: "text";
+      name: string;
+      stored: boolean;
+      truncated: boolean;
+      pages: { page: number; text: string }[];
+    };
+
+/** The uploaded file (PDF/image, as a blob URL the caller must revoke) or its
+ *  extracted text. When the server lost the original, the indexed text. */
+export async function fetchPreview(name: string, signal?: AbortSignal): Promise<Preview> {
+  const res = await request(`/documents/${encodeURIComponent(name)}/preview`, { signal });
+  const mime = res.headers.get("content-type") ?? "";
+  if (mime.includes("application/json")) {
+    return { name, ...(await res.json()) };
+  }
+  const blob = await res.blob();
+  return { kind: "file", name, url: URL.createObjectURL(blob), mime: blob.type || mime };
 }
 
 export function sourceLocation(hit: Pick<SourceHit, "kind" | "page" | "section">) {

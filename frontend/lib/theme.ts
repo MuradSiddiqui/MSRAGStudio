@@ -62,7 +62,7 @@ export const MODE_THEMES: Record<Mode, ModeTheme> = {
     label: "STAIR",
     short: "STAIR",
     tagline: "Contents first, then the section",
-    help: "Structure-aware retrieval, after IBM's STAIR: reads the documents' table of contents, opens the section that should hold the answer, and reads it in full. Citations name the section.",
+    help: "Structure-aware retrieval inspired by IBM Research's STAIR: reads the documents' table of contents, opens the section that should hold the answer, and reads it in full. Citations name the section.",
     dot: "bg-stair",
     text: "text-stair",
     softBg: "bg-stair/10",

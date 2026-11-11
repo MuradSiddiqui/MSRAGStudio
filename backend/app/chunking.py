@@ -41,16 +41,14 @@ def chunk_pages(
     outline: list[dict] | None = None,
 ) -> list[dict]:
     chunks = []
-    carry: tuple[str, str] = ("", "")  # section in progress from earlier pages
+    stack: structure.Stack = []  # heading chain still open from earlier pages
     for page in pages:
         outline_fb = structure.outline_section_for_page(outline or [], page["page"])
         idx = 0
-        for seg in structure.split_segments(page["text"]):
+        segments, stack = structure.split_segments(page["text"], stack)
+        for seg in segments:
             if seg["section_path"]:
-                carry = (seg["section"], seg["section_path"])
-                section, section_path = carry
-            elif carry[1]:
-                section, section_path = carry
+                section, section_path = seg["section"], seg["section_path"]
             else:
                 section, section_path = outline_fb
             for piece in _chunk_text(seg["text"], size, overlap):

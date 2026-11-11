@@ -1,4 +1,9 @@
-"""Qdrant vector store: one collection, payload carries source/page/region for citations."""
+"""Qdrant vector store: one collection, payload carries source/page/region for citations.
+
+Every point carries an `owner` (the caller's workspace id) and every read,
+write and delete filters on it, so one workspace never sees another's files.
+Points indexed before workspaces existed have no owner and match no filter.
+"""
 import uuid
 
 from qdrant_client import QdrantClient
@@ -20,7 +25,7 @@ _client = None
 _ready = False
 
 # Filtering on these fields requires a payload index on Qdrant Cloud (strict mode).
-_INDEXED_FIELDS = ("source", "kind", "section_path")
+_INDEXED_FIELDS = ("owner", "source", "kind", "section_path")
 
 
 def client() -> QdrantClient:
@@ -62,27 +67,38 @@ def ensure_collection(dim: int) -> None:
     _ready = True
 
 
-def _source_filter(source: str) -> Filter:
-    return Filter(must=[FieldCondition(key="source", match=MatchValue(value=source))])
+def _match(key: str, value: str) -> FieldCondition:
+    return FieldCondition(key=key, match=MatchValue(value=value))
 
 
-def delete_source(source: str) -> None:
+def _owner_filter(owner: str, *extra: FieldCondition) -> Filter:
+    return Filter(must=[_match("owner", owner), *extra])
+
+
+def _hit(payload: dict | None, score: float) -> dict:
+    hit = {"score": score, **(payload or {})}
+    hit.pop("owner", None)
+    return hit
+
+
+def delete_source(owner: str, source: str) -> None:
     if not collection_exists():
         return
     client().delete(
         collection_name=settings.collection,
-        points_selector=FilterSelector(filter=_source_filter(source)),
+        points_selector=FilterSelector(filter=_owner_filter(owner, _match("source", source))),
         wait=True,
     )
 
 
-def upsert(chunks: list[dict], vectors: list[list[float]]) -> int:
+def upsert(owner: str, chunks: list[dict], vectors: list[list[float]]) -> int:
     points = [
         PointStruct(
-            # Deterministic ids: re-indexing the same file overwrites instead of duplicating.
-            id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{c['source']}|{c['page']}|{c['chunk']}")),
+            # Deterministic ids: re-indexing the same file overwrites instead of
+            # duplicating, and the owner keeps equal filenames in two workspaces apart.
+            id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{owner}|{c['source']}|{c['page']}|{c['chunk']}")),
             vector=vec,
-            payload=c,
+            payload={**c, "owner": owner},
         )
         for c, vec in zip(chunks, vectors)
     ]
@@ -92,6 +108,7 @@ def upsert(chunks: list[dict], vectors: list[list[float]]) -> int:
 
 
 def search(
+    owner: str,
     vector: list[float],
     limit: int = 8,
     kind: str | None = None,
@@ -99,22 +116,36 @@ def search(
 ) -> list[dict]:
     if not collection_exists():
         return []
-    must = []
+    must = [_match("owner", owner)]
     if kind:
-        must.append(FieldCondition(key="kind", match=MatchValue(value=kind)))
+        must.append(_match("kind", kind))
     if sources:
         must.append(FieldCondition(key="source", match=MatchAny(any=sources)))
     hits = client().query_points(
         collection_name=settings.collection,
         query=vector,
         limit=limit,
-        query_filter=Filter(must=must) if must else None,
+        query_filter=Filter(must=must),
     ).points
-    return [{"score": h.score, **h.payload} for h in hits]
+    return [_hit(h.payload, h.score) for h in hits]
 
 
-def list_documents() -> list[dict]:
-    """Every indexed file with its chunk count, derived from point payloads."""
+def has_documents(owner: str, sources: list[str] | None = None) -> bool:
+    if not collection_exists():
+        return False
+    extra = [FieldCondition(key="source", match=MatchAny(any=sources))] if sources else []
+    points, _ = client().scroll(
+        collection_name=settings.collection,
+        scroll_filter=_owner_filter(owner, *extra),
+        limit=1,
+        with_payload=False,
+        with_vectors=False,
+    )
+    return bool(points)
+
+
+def list_documents(owner: str) -> list[dict]:
+    """Every indexed file in the workspace with its chunk count."""
     if not collection_exists():
         return []
     docs: dict[str, dict] = {}
@@ -122,6 +153,7 @@ def list_documents() -> list[dict]:
     while True:
         points, offset = client().scroll(
             collection_name=settings.collection,
+            scroll_filter=_owner_filter(owner),
             limit=1000,
             offset=offset,
             with_payload=["source", "kind"],
@@ -137,8 +169,8 @@ def list_documents() -> list[dict]:
     return sorted(docs.values(), key=lambda d: d["name"].lower())
 
 
-def list_sections(sources: list[str] | None = None) -> list[dict]:
-    """The table of contents of the index: every distinct section_path with
+def list_sections(owner: str, sources: list[str] | None = None) -> list[dict]:
+    """The table of contents of the workspace: every distinct section_path with
     its chunk count and page span, in document order per source.
 
     Only text chunks indexed by the structure-aware pipeline carry a
@@ -147,17 +179,13 @@ def list_sections(sources: list[str] | None = None) -> list[dict]:
     """
     if not collection_exists():
         return []
-    scroll_filter = None
-    if sources:
-        scroll_filter = Filter(
-            must=[FieldCondition(key="source", match=MatchAny(any=sources))]
-        )
+    extra = [FieldCondition(key="source", match=MatchAny(any=sources))] if sources else []
     agg: dict[tuple[str, str], dict] = {}
     offset = None
     while True:
         points, offset = client().scroll(
             collection_name=settings.collection,
-            scroll_filter=scroll_filter,
+            scroll_filter=_owner_filter(owner, *extra),
             limit=1000,
             offset=offset,
             with_payload=["source", "kind", "section", "section_path", "page"],
@@ -193,37 +221,32 @@ def list_sections(sources: list[str] | None = None) -> list[dict]:
     return sorted(out, key=lambda e: (e["source"].lower(), e["page_from"] or 0, e["section_path"]))
 
 
-def fetch_section_chunks(
-    source: str, section_path: str, limit: int = 256
+def fetch_chunks(
+    owner: str, source: str, section_path: str | None = None, limit: int = 256
 ) -> list[dict]:
-    """Every chunk of one section, in document order (page, then chunk).
+    """Chunks of one file (optionally one section of it) in document order.
 
-    STAIR reads the whole chosen section instead of a top-k sample, so
-    this is a payload-filtered scroll, not a vector search. Returned hits
-    carry score 0.0: membership in the section, not similarity, selected
-    them.
+    STAIR reads the whole chosen section instead of a top-k sample, so this
+    is a payload-filtered scroll, not a vector search. Returned hits carry
+    score 0.0: membership in the section, not similarity, selected them.
     """
     if not collection_exists():
         return []
-    scroll_filter = Filter(
-        must=[
-            FieldCondition(key="source", match=MatchValue(value=source)),
-            FieldCondition(key="section_path", match=MatchValue(value=section_path)),
-        ]
-    )
+    conditions = [_match("source", source)]
+    if section_path is not None:
+        conditions.append(_match("section_path", section_path))
     found: list[dict] = []
     offset = None
     while len(found) < limit:
         points, offset = client().scroll(
             collection_name=settings.collection,
-            scroll_filter=scroll_filter,
+            scroll_filter=_owner_filter(owner, *conditions),
             limit=min(256, limit - len(found)),
             offset=offset,
             with_payload=True,
             with_vectors=False,
         )
-        for p in points:
-            found.append({"score": 0.0, **(p.payload or {})})
+        found.extend(_hit(p.payload, 0.0) for p in points)
         if offset is None:
             break
     found.sort(key=lambda c: (c.get("page") or 0, c.get("chunk") or 0))

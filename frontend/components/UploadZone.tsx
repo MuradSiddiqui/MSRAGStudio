@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   AlertCircle,
+  Eye,
   FileText,
   Image as ImageIcon,
   Loader2,
@@ -18,6 +19,7 @@ import {
   isImageName,
   type IndexedDocument,
 } from "@/lib/api";
+import PreviewModal from "./PreviewModal";
 
 export interface UploadItem {
   id: string;
@@ -82,6 +84,8 @@ export default function UploadZone({
   const [confirming, setConfirming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [previewing, setPreviewing] = useState<string | null>(null);
+  const closePreview = useCallback(() => setPreviewing(null), []);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -355,6 +359,15 @@ export default function UploadZone({
                       </button>
                       <button
                         type="button"
+                        onClick={() => setPreviewing(d.name)}
+                        className="rounded-md p-1.5 text-muted hover:bg-surface hover:text-ink"
+                        aria-label={`Preview ${d.name}`}
+                        title="Preview"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setConfirming(d.name)}
                         className="rounded-md p-1.5 text-faint hover:bg-surface hover:text-danger"
                         aria-label={`Remove ${d.name} from the index`}
@@ -373,6 +386,7 @@ export default function UploadZone({
           <p className="px-1 py-3 text-xs text-muted">No files match “{filter}”.</p>
         )}
       </div>
+      {previewing && <PreviewModal name={previewing} onClose={closePreview} />}
     </div>
   );
 }

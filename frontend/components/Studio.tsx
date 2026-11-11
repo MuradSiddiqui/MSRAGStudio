@@ -355,10 +355,12 @@ export default function Studio() {
     setScopedNames([]);
   }, []);
 
+  const hasDocs = documents.length > 0;
+
   const ask = useCallback(
     async (q: string, m: Mode, sourcesOverride?: string[]) => {
       q = q.trim();
-      if (!q || abortRef.current) return;
+      if (!q || !hasDocs || abortRef.current) return;
       const controller = new AbortController();
       abortRef.current = controller;
       setAsking(true);
@@ -397,7 +399,7 @@ export default function Studio() {
         setAsking(false);
       }
     },
-    [scopedNames]
+    [scopedNames, hasDocs]
   );
 
   const handleAsk = () => ask(question, mode);
@@ -433,7 +435,7 @@ export default function Studio() {
   };
 
   const theme = MODE_THEMES[mode];
-  const canAsk = question.trim().length > 0 && !asking;
+  const canAsk = hasDocs && question.trim().length > 0 && !asking;
   const noDocs = documentsState === "ready" && documents.length === 0;
 
   return (
@@ -600,8 +602,13 @@ export default function Studio() {
                 }
               }}
               rows={2}
+              disabled={!hasDocs}
               placeholder={
-                mode === "multimodal"
+                !hasDocs
+                  ? documentsState === "loading"
+                    ? "Loading your library…"
+                    : "Upload a document or image first, then ask about it."
+                  : mode === "multimodal"
                   ? "Ask about text or images in scope…"
                   : mode === "agentic"
                     ? "Ask a list-all or coverage question…"
@@ -609,7 +616,7 @@ export default function Studio() {
                       ? "Ask, and STAIR opens the section that holds it…"
                       : "Ask anything about the selected documents…"
               }
-              className="block max-h-[280px] w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none placeholder:text-faint"
+              className="block max-h-[280px] w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none placeholder:text-faint disabled:cursor-not-allowed"
             />
             {scopedNames.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -668,7 +675,12 @@ export default function Studio() {
                     <Square className="h-3 w-3 fill-current" /> Stop
                   </button>
                 ) : (
-                  <button type="submit" disabled={!canAsk} className="btn-primary py-1.5">
+                  <button
+                    type="submit"
+                    disabled={!canAsk}
+                    className="btn-primary py-1.5"
+                    title={hasDocs ? undefined : "Upload a document or image first"}
+                  >
                     Ask {theme.short} <ArrowUp className="h-4 w-4" />
                   </button>
                 )}
@@ -677,7 +689,7 @@ export default function Studio() {
           </form>
 
           {/* Mode-specific suggestions */}
-          {!current && !asking && !question && (
+          {hasDocs && !current && !asking && !question && (
             <div>
               <p className="mb-2 px-0.5 font-mono text-[10px] uppercase tracking-wider text-faint">
                 Try with {theme.short}

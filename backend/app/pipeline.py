@@ -5,7 +5,7 @@ from pathlib import Path
 from . import chunking, embeddings, extract, llm, store
 
 
-def ingest_file(path: str) -> dict:
+def ingest_file(path: str, owner: str) -> dict:
     name = Path(path).name
     if extract.is_image(path):
         description = llm.describe_image(path)
@@ -31,6 +31,6 @@ def ingest_file(path: str) -> dict:
         return {"file": name, "chunks": 0}
     vectors = embeddings.embed([c["text"] for c in chunks])
     store.ensure_collection(len(vectors[0]))
-    store.delete_source(name)
-    count = store.upsert(chunks, vectors)
+    store.delete_source(owner, name)
+    count = store.upsert(owner, chunks, vectors)
     return {"file": name, "chunks": count}

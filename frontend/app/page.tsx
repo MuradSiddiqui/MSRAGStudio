@@ -56,7 +56,7 @@ const MODE_CARDS = [
     text: "text-stair",
     Icon: ListTree,
     description:
-      "Structure-aware retrieval, after IBM's STAIR. Reads the table of contents first, opens the section that should hold the answer, and reads it in full.",
+      "Structure-aware retrieval inspired by IBM Research's STAIR. Reads the table of contents first, opens the section that should hold the answer, and reads it in full.",
     points: ["Table-of-contents navigation", "Whole sections, not top-k samples", "Citations carry the section name"],
   },
 ];
