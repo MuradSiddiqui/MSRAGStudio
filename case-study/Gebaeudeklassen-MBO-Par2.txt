@@ -1,0 +1,15 @@
+Musterbauordnung (MBO), § 2 Begriffe, Absatz 3 — Gebäudeklassen
+
+Gebäude werden in folgende Gebäudeklassen eingeteilt:
+
+1. Gebäudeklasse 1: a) freistehende Gebäude mit einer Höhe bis zu 7 m und nicht mehr als zwei Nutzungseinheiten von insgesamt nicht mehr als 400 m² und b) freistehende land- oder forstwirtschaftlich genutzte Gebäude,
+
+2. Gebäudeklasse 2: Gebäude mit einer Höhe bis zu 7 m und nicht mehr als zwei Nutzungseinheiten von insgesamt nicht mehr als 400 m²,
+
+3. Gebäudeklasse 3: sonstige Gebäude mit einer Höhe bis zu 7 m,
+
+4. Gebäudeklasse 4: Gebäude mit einer Höhe bis zu 13 m und Nutzungseinheiten mit jeweils nicht mehr als 400 m²,
+
+5. Gebäudeklasse 5: sonstige Gebäude einschließlich unterirdischer Gebäude.
+
+Höhe im Sinne des Satzes 1 ist das Maß der Fußbodenoberkante des höchstgelegenen Geschosses, in dem ein Aufenthaltsraum möglich ist, über der Geländeoberfläche im Mittel. Die Grundflächen der Nutzungseinheiten sind die Brutto-Grundflächen; bei der Berechnung bleiben Flächen in Kellergeschossen außer Betracht.
