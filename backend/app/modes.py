@@ -1,10 +1,10 @@
 """The four retrieval modes.
 
 basic      - top-k vector search over text chunks only, cited answer.
-multimodal - same index, but image chunks (vision descriptions) are included and
-             cited by file + region text.
-agentic    - multi-step: plan -> retrieve per sub-question -> completeness check
-             against the whole index -> final answer with a coverage report.
+multimodal - text hits plus a guaranteed image-chunk quota, so a floor plan
+             cannot be crowded out of the top-k by a large text document.
+agentic    - multi-step: plan -> retrieve per sub-question (in parallel) ->
+             final answer with a coverage report.
 stair      - structure-aware, inspired by IBM Research's STAIR (arXiv 2609.03874).
              STAIR fine-tunes a model to generate the table-of-contents section
              that answers a question; here an off-the-shelf model reads the
@@ -16,9 +16,13 @@ stair      - structure-aware, inspired by IBM Research's STAIR (arXiv 2609.03874
 Every mode searches only the caller's workspace (`owner`). Optional `sources`
 limits every retrieve step to those filenames.
 """
-from . import embeddings, llm, store
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-MAX_SUB_QUESTIONS = 6
+from . import embeddings, llm, store
+from .config import settings
+
+MAX_SUB_QUESTIONS = 5
+MAX_MULTIMODAL_IMAGES = 3
 
 
 def _retrieve(
@@ -33,20 +37,62 @@ def _retrieve(
     return store.search(owner, vector, limit=limit, kind=kind, sources=sources)
 
 
+def _evidence(hits: list[dict]) -> str:
+    """'low' when the best scored hit is weak; 'ok' otherwise.
+
+    STAIR section membership hits carry score 0.0 — ignore those and only
+    judge real similarity scores. No hard cutoff on retrieval; this only
+    flags the response for the UI.
+    """
+    if not hits:
+        return "low"
+    scored = [float(h.get("score") or 0) for h in hits if (h.get("score") or 0) > 0]
+    if not scored:
+        return "ok"
+    return "low" if max(scored) < settings.low_evidence_threshold else "ok"
+
+
+def _pack(mode: str, answer: str, sources: list[dict], sources_scope: list[str] | None, **extra) -> dict:
+    return {
+        "mode": mode,
+        "answer": answer,
+        "sources": sources,
+        "evidence": _evidence(sources),
+        "scoped_to": sources_scope or [],
+        **extra,
+    }
+
+
 def basic(question: str, owner: str, sources: list[str] | None = None) -> dict:
     hits = _retrieve(owner, question, kind="text", sources=sources)
     answer = llm.answer_with_citations(question, hits)
-    return {"mode": "basic", "answer": answer, "sources": hits, "scoped_to": sources or []}
+    return _pack("basic", answer, hits, sources)
 
 
 def multimodal(question: str, owner: str, sources: list[str] | None = None) -> dict:
-    hits = _retrieve(owner, question, limit=10, sources=sources)
+    # Text and images are retrieved separately so a large text document cannot
+    # push the floor-plan image chunk out of a single shared top-10 (demo Q1).
+    text_hits = _retrieve(owner, question, limit=8, kind="text", sources=sources)
+    image_hits = _retrieve(
+        owner, question, limit=MAX_MULTIMODAL_IMAGES, kind="image", sources=sources
+    )
+    seen: set[tuple] = set()
+    hits: list[dict] = []
+    for h in image_hits + text_hits:
+        key = (h.get("source"), h.get("page"), h.get("chunk"), h.get("kind"))
+        if key in seen:
+            continue
+        seen.add(key)
+        hits.append(h)
     answer = llm.answer_with_citations(
         question,
         hits,
-        mode_note="Some context comes from images; cite those as [image.png · image].",
+        mode_note=(
+            "Some context comes from images (labelled · image); treat those as "
+            "visual evidence and cite them as [image.png · image]."
+        ),
     )
-    return {"mode": "multimodal", "answer": answer, "sources": hits, "scoped_to": sources or []}
+    return _pack("multimodal", answer, hits, sources)
 
 
 def _plan(question: str) -> list[str]:
@@ -58,6 +104,7 @@ def _plan(question: str) -> list[str]:
                     "Break the user's question into sub-questions that together cover it "
                     "COMPLETELY (for 'list all' questions, one sub-question per category). "
                     f"Use at most {MAX_SUB_QUESTIONS} sub-questions. "
+                    "Keep each sub-question in the same language as the user's question. "
                     'Reply with JSON: {"sub_questions": ["...", "..."]}'
                 ),
             },
@@ -76,14 +123,25 @@ def _plan(question: str) -> list[str]:
 def agentic(question: str, owner: str, sources: list[str] | None = None) -> dict:
     sub_questions = _plan(question)
     all_hits: dict[tuple, dict] = {}
-    per_sub = []
+    per_sub: list[dict] = []
+
+    def _one(sub: str) -> tuple[str, list[dict]]:
+        return sub, _retrieve(owner, sub, limit=8, sources=sources)
+
+    # Parallel retrieve: sequential was ~182s on list-all; target <60s.
+    with ThreadPoolExecutor(max_workers=min(MAX_SUB_QUESTIONS, len(sub_questions))) as pool:
+        futures = [pool.submit(_one, sub) for sub in sub_questions]
+        # Preserve plan order in the coverage report.
+        results = {sub: hits for sub, hits in (f.result() for f in as_completed(futures))}
+
     for sub in sub_questions:
-        hits = _retrieve(owner, sub, limit=8, sources=sources)
+        hits = results.get(sub, [])
         for h in hits:
             key = (h.get("source"), h.get("page"), h.get("chunk"))
             if key not in all_hits or h["score"] > all_hits[key]["score"]:
                 all_hits[key] = h
         per_sub.append({"sub_question": sub, "found": len(hits)})
+
     contexts = sorted(all_hits.values(), key=lambda h: h["score"], reverse=True)
     answer = llm.answer_with_citations(
         question,
@@ -98,13 +156,7 @@ def agentic(question: str, owner: str, sources: list[str] | None = None) -> dict
         "unique_sources": len({h["source"] for h in contexts}),
         "chunks_considered": len(contexts),
     }
-    return {
-        "mode": "agentic",
-        "answer": answer,
-        "sources": contexts,
-        "coverage": coverage,
-        "scoped_to": sources or [],
-    }
+    return _pack("agentic", answer, contexts, sources, coverage=coverage)
 
 
 MAX_STAIR_SECTIONS = 3
@@ -181,16 +233,18 @@ def _navigate(question: str, toc: list[dict]) -> tuple[list[int], str]:
     return chosen[:MAX_STAIR_SECTIONS], reason.strip() if isinstance(reason, str) else ""
 
 
-def _stair_fallback(question: str, hits: list[dict], sources: list[str] | None, reason: str, toc_size: int) -> dict:
+def _stair_fallback(
+    question: str, hits: list[dict], sources: list[str] | None, reason: str, toc_size: int
+) -> dict:
     """Answer from vector hits and say so in the structure report."""
     answer = llm.answer_with_citations(question, hits)
-    return {
-        "mode": "stair",
-        "answer": answer,
-        "sources": hits,
-        "structure": {"navigated": False, "reason": reason, "toc_sections": toc_size, "chosen": []},
-        "scoped_to": sources or [],
-    }
+    return _pack(
+        "stair",
+        answer,
+        hits,
+        sources,
+        structure={"navigated": False, "reason": reason, "toc_sections": toc_size, "chosen": []},
+    )
 
 
 def stair(question: str, owner: str, sources: list[str] | None = None) -> dict:
@@ -255,10 +309,13 @@ def stair(question: str, owner: str, sources: list[str] | None = None) -> dict:
             "[file.pdf · §4.2 Doors · p.3]."
         ),
     )
+    # Evidence from the vector hits that guided navigation (section chunks are score 0).
+    evidence_hits = hits if hits else contexts
     return {
         "mode": "stair",
         "answer": answer,
         "sources": contexts,
+        "evidence": _evidence(evidence_hits),
         "structure": {
             "navigated": True,
             "reason": reason,

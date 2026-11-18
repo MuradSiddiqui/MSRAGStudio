@@ -60,6 +60,8 @@ export interface AskResult {
   mode: Mode;
   answer: string;
   sources: SourceHit[];
+  /** Soft flag from the top hit score — not a hard retrieval cutoff. */
+  evidence?: "ok" | "low";
   coverage?: Coverage;
   structure?: StructureReport;
   /** Filenames the search was limited to; empty means the whole index. */
@@ -250,6 +252,7 @@ export function buildReport(question: string, result: AskResult): string {
     `**Mode:** ${result.mode}`,
     `**Question:** ${question}`,
     `**Generated:** ${new Date().toLocaleString()}`,
+    ...(result.evidence === "low" ? ["**Evidence:** low — check sources"] : []),
     ...(result.scoped_to && result.scoped_to.length > 0
       ? [`**Scoped to:** ${result.scoped_to.join(", ")}`]
       : []),

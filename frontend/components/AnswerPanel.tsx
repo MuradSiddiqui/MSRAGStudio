@@ -135,6 +135,14 @@ export default function AnswerPanel({
             <Clock className="h-3 w-3" /> {(elapsedMs / 1000).toFixed(1)}s
           </span>
         )}
+        {result.evidence === "low" && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full border border-basic/40 bg-basic/10 px-2.5 py-1 font-mono text-[11px] font-medium text-basic"
+            title="The top retrieved passage scored below the soft evidence threshold. Check the sources before trusting this answer."
+          >
+            Low evidence — check sources
+          </span>
+        )}
         <div className="flex w-full items-center gap-1 sm:ml-auto sm:w-auto">
           <button type="button" onClick={() => copy("answer")} className="btn-quiet py-1.5 text-xs">
             {copied === "answer" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}

@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     gemini_vision_model: str = "gemini-3.8-flash"
     gemini_vision_fallbacks: str = "gemini-3-flash-preview,gemini-flash-latest,gemini-3.5-flash"
     vision_provider: str = "auto"  # auto | groq | gemini
+    # Top-hit cosine below this → API returns evidence: "low" (Alex 2026-11-19:
+    # off-topic ~0.64 vs on-topic ~0.70, so this is a soft flag, not a cutoff).
+    low_evidence_threshold: float = 0.68
 
     class Config:
         env_prefix = "MSRAG_"

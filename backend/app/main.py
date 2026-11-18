@@ -56,12 +56,22 @@ def _owner_dir(owner: str) -> Path:
 
 
 def _warm_up() -> None:
+    # Best-effort: never blocks startup. First upload/ask after a cold deploy
+    # was measured at 93s / >180s; warming embed + one tiny LLM call drops that.
     try:
         dim = embeddings.warm_up()
         store.ensure_collection(dim)
         log.info("Embedding model and Qdrant collection ready")
-    except Exception:  # noqa: BLE001 - warm-up is best effort; requests retry lazily
-        log.exception("Warm-up failed; will retry on first request")
+    except Exception:  # noqa: BLE001
+        log.exception("Warm-up (embed/store) failed; will retry on first request")
+        return
+    try:
+        vector = embeddings.embed_query("warm-up ping")
+        store.search("__warmup__", vector, limit=1)
+        llm.warm_provider()
+        log.info("Retrieval path and LLM provider warmed")
+    except Exception:  # noqa: BLE001
+        log.exception("Warm-up (retrieve/LLM) failed; first ask may be slow")
 
 
 @asynccontextmanager
@@ -93,9 +103,13 @@ def _fail(exc: Exception, action: str) -> HTTPException:
     if isinstance(exc, HTTPException):
         return exc
     if isinstance(exc, llm.LLMError):
-        return HTTPException(502, str(exc))
+        # Busy / rate-limit → 503 so the UI can retry; never echo provider text
+        # (already stripped inside llm.py). Log the action for the server log.
+        log.warning("%s: %s", action, exc)
+        status = 503 if str(exc) == llm.BUSY_MSG else 502
+        return HTTPException(status, str(exc))
     log.exception("%s failed", action)
-    return HTTPException(500, f"{action} failed: {type(exc).__name__}: {exc}")
+    return HTTPException(500, f"{action} failed. Please try again.")
 
 
 @app.get("/health")
@@ -248,6 +262,11 @@ def report(owner: Owner, question: str, mode: str | None = None):
         "",
         f"**Mode:** {result['mode']}",
         f"**Question:** {question}",
+        *(
+            ["**Evidence:** low — check sources"]
+            if result.get("evidence") == "low"
+            else []
+        ),
         "",
         "## Answer",
         "",

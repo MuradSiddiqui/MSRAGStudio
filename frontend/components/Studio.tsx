@@ -187,7 +187,8 @@ export default function Studio() {
     }
   }, []);
 
-  // Health polling: fast while the backend is down or the model is loading.
+  // Health on mount (and polling while down/warming): waking /health also
+  // nudges a cold Railway instance so warm-up finishes before the first ask.
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
