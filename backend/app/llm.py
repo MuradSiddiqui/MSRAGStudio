@@ -61,6 +61,23 @@ _REFUSAL_RULE = (
     "plainly and do not speculate or invent requirements."
 )
 
+# Regression note (Muse, case-study door-mapping): the model generalised
+# "fire-rated / smoke-tight" from one door situation to every similar door
+# on the plan. Requirements must stay situation-bound.
+_GROUNDING_RULE = (
+    "When mapping requirements (e.g. fire-rated, smoke-tight, self-closing) "
+    "onto specific items (door, room, component): assign a requirement to an "
+    "item ONLY when a retrieved passage explicitly regulates that item's exact "
+    "situation (its connection / location type). Never generalise a rule from "
+    "one situation to all similar items. Every assigned requirement must cite "
+    "the passage that actually contains the rule for that situation — never "
+    "cite a passage about a different component or topic. Items for which no "
+    "retrieved passage states a specific requirement must be listed separately "
+    "with the note: no specific requirement found in the provided excerpts "
+    "(or the same note in the answer language). Keep any existing table format "
+    "for door-mapping answers."
+)
+
 
 class LLMError(RuntimeError):
     """Upstream model call failed; message is safe to show to the user."""
@@ -300,6 +317,7 @@ def answer_with_citations(question: str, contexts: list[dict], mode_note: str = 
         "quoted source text — keep those exactly as labelled / written. "
         f"{_REFUSAL_RULE} "
         f"{_INJECTION_RULE} "
+        f"{_GROUNDING_RULE} "
         + mode_note
     )
     answer = chat(

@@ -89,7 +89,11 @@ def multimodal(question: str, owner: str, sources: list[str] | None = None) -> d
         hits,
         mode_note=(
             "Some context comes from images (labelled · image); treat those as "
-            "visual evidence and cite them as [image.png · image]."
+            "visual evidence and cite them as [image.png · image]. "
+            "For door/component requirement mapping: only assign fire-rated / "
+            "smoke-tight / similar attributes when a passage (or the plan label) "
+            "explicitly covers that door's situation; put every other labelled "
+            "door under 'no specific requirement found in the provided excerpts'."
         ),
     )
     return _pack("multimodal", answer, hits, sources)
@@ -148,7 +152,11 @@ def agentic(question: str, owner: str, sources: list[str] | None = None) -> dict
         contexts,
         mode_note=(
             "The user needs a COMPLETE answer. Enumerate every matching item you can "
-            "find in the context, grouped clearly. Do not stop at the first few."
+            "find in the context, grouped clearly. Do not stop at the first few. "
+            "For requirement mapping (doors, rooms, components): assign a requirement "
+            "only when a retrieved passage explicitly regulates that item's exact "
+            "situation; never generalise across similar items; list items without a "
+            "specific passage under 'no specific requirement found in the provided excerpts'."
         ),
     )
     coverage = {
