@@ -198,14 +198,29 @@
 .prose-answer hr {
   @apply my-5 border-line;
 }
+/* display:block on <table> was collapsing columns to ~1ch (letter-by-letter
+   wrap). Keep real table layout; scroll only the wrapper when too wide. */
+.prose-answer-table-wrap {
+  @apply my-3 max-w-full overflow-x-auto;
+}
 .prose-answer table {
-  @apply block w-full overflow-x-auto border-collapse text-sm;
+  @apply w-full min-w-[36rem] border-collapse text-sm;
+  table-layout: auto;
+}
+.prose-answer th,
+.prose-answer td {
+  @apply border-b border-line px-3 py-2 text-left align-top;
+  min-width: 7.5rem;
+  max-width: 28rem;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .prose-answer th {
-  @apply border-b border-line px-3 py-2 text-left font-mono text-[11px] font-medium uppercase tracking-wider text-muted;
+  @apply border-line font-mono text-[11px] font-medium uppercase tracking-wider text-muted;
 }
 .prose-answer td {
-  @apply border-b border-line/60 px-3 py-2 align-top;
+  @apply border-line/60;
 }
 .prose-answer a:not(.cite) {
   @apply underline decoration-faint underline-offset-2 hover:decoration-ink;

@@ -158,13 +158,18 @@ export default function AnswerPanel({
         </div>
       </div>
 
-      <div className="px-4 py-6 sm:px-7">
+      <div className="min-w-0 px-4 py-6 sm:px-7">
         <h2 className="break-words font-display text-lg font-semibold tracking-tight sm:text-xl">{question}</h2>
-        <div className="prose-answer mt-4">
+        <div className="prose-answer mt-4 min-w-0">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }]]}
             rehypePlugins={[rehypeKatex]}
             components={{
+              table: ({ children }) => (
+                <div className="prose-answer-table-wrap">
+                  <table>{children}</table>
+                </div>
+              ),
               a: ({ href, children }) => {
                 if (href?.startsWith(CITE_PREFIX)) {
                   const label = decodeURIComponent(href.slice(CITE_PREFIX.length));
