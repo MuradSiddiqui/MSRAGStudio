@@ -172,7 +172,7 @@ def chat(
     body: dict = {
         "model": model or settings.groq_chat_model,
         "messages": messages,
-        "temperature": 0.2,
+        "temperature": 0,
     }
     if json_mode:
         body["response_format"] = {"type": "json_object"}
