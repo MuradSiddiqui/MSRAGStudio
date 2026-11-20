@@ -75,7 +75,16 @@ _GROUNDING_RULE = (
     "retrieved passage states a specific requirement must be listed separately "
     "with the note: no specific requirement found in the provided excerpts "
     "(or the same note in the answer language). Keep any existing table format "
-    "for door-mapping answers."
+    "for door-mapping answers. "
+    "A requirement stated for openings between two named spaces (for example "
+    "between a necessary stairwell and a necessary corridor) applies ONLY to "
+    "openings between those two spaces. A door from a corridor into an office, "
+    "a meeting room or a technical room is a different situation: do not "
+    "transfer the stairwell or smoke-section rules to it. Only the smoke-section "
+    "door inside the corridor itself (§ 36) and the stairwell door (§ 35) and "
+    "the shaft door (§ 39) carry their own rules; other corridor doors are "
+    "listed as 'no specific requirement found' unless a passage names their "
+    "exact situation."
 )
 
 
