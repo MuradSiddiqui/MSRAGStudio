@@ -5,6 +5,7 @@ search and previews are scoped to it. There are no accounts: the id is the
 only key, so anyone holding it can read that workspace. Requests without the
 header (n8n, curl) share the "default" workspace.
 """
+import base64
 import logging
 import mimetypes
 import os
@@ -16,7 +17,7 @@ from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
 from . import embeddings, extract, llm, modes, pipeline, store
@@ -182,12 +183,21 @@ def preview_document(name: str, owner: Owner):
                 return FileResponse(path, media_type=media_type, content_disposition_type="inline")
             pages = extract.extract_text(str(path))
             return _text_preview(name, [(p["page"], p["text"]) for p in pages], stored=True)
-        chunks = store.fetch_chunks(owner, name, limit=2000)
+        chunks = store.fetch_chunks(owner, name, limit=2000, include_preview=True)
     except Exception as exc:  # noqa: BLE001
         raise _fail(exc, "Preview") from exc
     if not chunks:
         raise HTTPException(404, "This file is not in your library.")
     if chunks[0].get("kind") == "image":
+        # Prefer the durable copy saved at ingest (survives Railway redeploys).
+        b64 = chunks[0].get("preview_b64")
+        if isinstance(b64, str) and b64:
+            try:
+                data = base64.b64decode(b64, validate=False)
+            except Exception as exc:  # noqa: BLE001
+                raise _fail(exc, "Preview") from exc
+            mime = chunks[0].get("preview_mime") or mimetypes.guess_type(name)[0] or "image/png"
+            return Response(content=data, media_type=mime)
         return {"name": name, "kind": "image", "stored": False, "description": chunks[0].get("text", "")}
     by_page: dict[int, list[str]] = {}
     for c in chunks:

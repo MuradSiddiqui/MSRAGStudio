@@ -78,6 +78,10 @@ def _owner_filter(owner: str, *extra: FieldCondition) -> Filter:
 def _hit(payload: dict | None, score: float) -> dict:
     hit = {"score": score, **(payload or {})}
     hit.pop("owner", None)
+    # Preview bytes stay in Qdrant for /preview after Railway wipes disk;
+    # never ship them in search / ask responses.
+    hit.pop("preview_b64", None)
+    hit.pop("preview_mime", None)
     return hit
 
 
@@ -222,13 +226,19 @@ def list_sections(owner: str, sources: list[str] | None = None) -> list[dict]:
 
 
 def fetch_chunks(
-    owner: str, source: str, section_path: str | None = None, limit: int = 256
+    owner: str,
+    source: str,
+    section_path: str | None = None,
+    limit: int = 256,
+    *,
+    include_preview: bool = False,
 ) -> list[dict]:
     """Chunks of one file (optionally one section of it) in document order.
 
     STAIR reads the whole chosen section instead of a top-k sample, so this
     is a payload-filtered scroll, not a vector search. Returned hits carry
     score 0.0: membership in the section, not similarity, selected them.
+    Set include_preview=True only for the preview endpoint (keeps preview_b64).
     """
     if not collection_exists():
         return []
@@ -246,7 +256,13 @@ def fetch_chunks(
             with_payload=True,
             with_vectors=False,
         )
-        found.extend(_hit(p.payload, 0.0) for p in points)
+        for p in points:
+            if include_preview:
+                payload = dict(p.payload or {})
+                payload.pop("owner", None)
+                found.append({"score": 0.0, **payload})
+            else:
+                found.append(_hit(p.payload, 0.0))
         if offset is None:
             break
     found.sort(key=lambda c: (c.get("page") or 0, c.get("chunk") or 0))
