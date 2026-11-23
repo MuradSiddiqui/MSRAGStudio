@@ -155,12 +155,18 @@ All demo files are in the [`case-study/`](case-study/) folder:
 
 - [Building-code excerpt, MBO § 2 and §§ 26-39 (PDF)](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/MBO-Auszug-Gebaeudeklassen-Brandschutz.pdf)
 - [Ground-floor plan with doors D1-D9 (PNG)](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/Grundriss-Erdgeschoss.png)
+- [Second plan, CAD style, 13 openings (PNG)](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/plan-eg-2-cad.png)
+- [Full Musterbauordnung, official 73-page PDF](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/mbo-argebau.pdf)
 - [Door rules as cleaned text, §§ 35, 36 and 39](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/Tueren-Schluesselregeln-MBO.txt)
 - [§ 2 building classes as text](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/Gebaeudeklassen-MBO-Par2.txt)
 - [Full case-study write-up](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/CASE-STUDY.md)
 
-1. Open the live Studio: https://ms-rag-studio-muradsiddiqui.vercel.app/studio
-2. Upload the excerpt PDF and the plan PNG.
-3. Select **Multimodal** and ask: "Welche Türen in diesem Grundriss müssen feuerhemmend oder rauchdicht sein?"
+**Option A — open the preloaded demo library.** The corpus above is already indexed on the server; nothing to upload:
 
-Or upload your own guideline document and your own plan export, and ask your own question. Every answer is grounded in your documents and cited to page, section or image.
+1. Open the live Studio: https://ms-rag-studio-muradsiddiqui.vercel.app/studio
+2. Open the browser console (Mac: Cmd+Option+J, Windows: Ctrl+Shift+J).
+3. Paste this line and press Enter: `localStorage.setItem('msrag-workspace', 'building-codes-demo')`
+4. Reload the page — the library now shows the building-code corpus.
+5. Select **Multimodal**, tick the excerpt PDF and the plan, and ask: "Welche Türen in diesem Grundriss müssen feuerhemmend oder rauchdicht sein?"
+
+**Option B — use your own documents.** Upload any guideline document and any plan export in the Studio and ask your own question. Every answer is grounded in your documents and cited to page, section or image.
