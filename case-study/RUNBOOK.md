@@ -1,4 +1,4 @@
-# Demo Runbook — HENN Round 2, Wed 25 Nov 2026, 13:00, Berlin
+# Demo Runbook
 
 Case study: Building-Code Research in MS RAG Studio (Musterbauordnung excerpt + ground-floor plan).
 Live app: https://ms-rag-studio-muradsiddiqui.vercel.app · Backend: Railway (Hobby), `msragstudio-production.up.railway.app`
@@ -6,23 +6,23 @@ Live app: https://ms-rag-studio-muradsiddiqui.vercel.app · Backend: Railway (Ho
 ## The one thing that can silently break the demo: the workspace
 
 The Studio library is keyed to a per-browser workspace ID (localStorage key `msrag-workspace`).
-The case-study documents (MBO excerpt, 71 chunks + floor plan, 1 chunk) live in workspace **`henn-case-study`**.
+The case-study documents (MBO excerpt, 71 chunks + floor plan, 1 chunk) live in workspace **`building-codes-demo`**.
 A browser that has never set this ID shows an EMPTY library. Prepare the exact browser/profile you will present from:
 
 1. Open the Studio page in the demo browser.
-2. Open DevTools → Console and run: `localStorage.setItem('msrag-workspace', 'henn-case-study')`
+2. Open DevTools → Console and run: `localStorage.setItem('msrag-workspace', 'building-codes-demo')`
 3. Reload the page. The library must show: `MBO-Auszug-Gebaeudeklassen-Brandschutz.pdf` and `Grundriss-Erdgeschoss.png`.
 4. Leave that tab open. Do not clear browser data afterwards.
 
 Fallback if the library is empty and there is no time: re-upload the two files from `case-study/` in this repo (upload takes ~45 s for the PDF, ~2 min for the plan image).
 
-## Morning of 25 Nov — checklist
+## Demo morning — checklist
 
 - [ ] **Warm-up is MANDATORY.** After a redeploy or a long idle period the first requests are severely slowed by model warm-up (measured 19 Nov: first upload 93 s in a smoke test, first ask >180 s, the identical warm ask 22 s). At least 30 minutes before leaving: open the Studio (demo browser, workspace set), ask one cheap Basic question, wait for the answer. Then ask Demo Q1 once in Multimodal mode so the path is warm.
 - [ ] Check `https://msragstudio-production.up.railway.app/health` returns `{"status":"ok","model_ready":true}`.
 - [ ] **Pre-run the Agentic question** (it is the slowest path) and keep the result + downloaded Markdown report open in a tab: "Welche Türen müssen feuerhemmend oder rauchdicht sein? Liste alle Fälle auf." — if the live run stalls in the room, present the pre-run report: "If the live demo stalls, the downloaded report shows the same run."
 - [ ] Have the plan image and the MBO excerpt PDF open locally as a visual fallback.
-- [ ] Budget discipline: Railway Hobby is capped (hard limit ~$7, subscription ends after the interview) and Groq/Gemini are free tiers. No exploratory testing on the day; only the rehearsed questions.
+- [ ] Budget discipline: Railway Hobby is capped (hard limit ~$7, subscription ends after the demo period) and Groq/Gemini are free tiers. No exploratory testing on the day; only the rehearsed questions.
 
 ## The demo (rehearsed order)
 

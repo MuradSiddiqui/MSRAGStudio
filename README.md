@@ -139,9 +139,9 @@ Private project · © Murad Siddiqui
 
 ## Case Study: Building-Code Research
 
-A focused case study built for a conversation with HENN's Emergent Technologies team, exploring the two problems they described: **completeness instead of top-k** (for "list all" questions, a top-5 answer is dangerous) and **rules that live in structured lists and drawings**, not only in prose.
+An example use case for the Studio: building-code research, chosen because the domain is demanding. It stresses two hard problems: **completeness instead of top-k** (for "list all" questions, a top-5 answer is dangerous) and **rules that live in structured lists and drawings**, not only in prose.
 
-The Studio workspace `henn-case-study` is preloaded with an excerpt of the official Musterbauordnung (MBO) — § 2 (Gebäudeklassen) and §§ 26–39 (Brandschutz, Rettungswege) — plus a ground-floor plan whose 9 doors (D1–D9) are numbered but deliberately carry no fire ratings, so every rating in an answer must come from the code:
+The Studio workspace `building-codes-demo` is preloaded with an excerpt of the official Musterbauordnung (MBO) — § 2 (Gebäudeklassen) and §§ 26–39 (Brandschutz, Rettungswege) — plus a ground-floor plan whose 9 doors (D1–D9) are numbered but deliberately carry no fire ratings, so every rating in an answer must come from the code:
 
 ![Ground-floor plan used in the case study](case-study/Grundriss-Erdgeschoss.png)
 

@@ -1,6 +1,6 @@
 # Case Study: Building-Code Research — corpus note
 
-Prototype built after a first conversation with HENN's Emergent Technologies team, to explore the two problems they described: **completeness instead of top-k** (for "list all" questions, a top-5 answer is dangerous) and **rules that live in tables, lists and drawings**, not only in prose.
+An example use case for MS RAG Studio, chosen because building-code research stresses two hard problems: **completeness instead of top-k** (for "list all" questions, a top-5 answer is dangerous) and **rules that live in tables, lists and drawings**, not only in prose.
 
 ## Corpus (small on purpose — fully indexed and verified)
 
@@ -9,7 +9,7 @@ Prototype built after a first conversation with HENN's Emergent Technologies tea
 | `MBO-Auszug-Gebaeudeklassen-Brandschutz.pdf` | Excerpt of the official Musterbauordnung (MBO), Bauministerkonferenz, via is-argebau.de: § 2 Abs. 3 (Gebäudeklassen) + §§ 26–39 complete (Brandschutz, Rettungswege, Treppenräume, Flure, Aufzüge). 17 pages, built from the official 73-page PDF. | 71 chunks, with STAIR section payloads |
 | `Grundriss-Erdgeschoss.png` | Ground-floor plan drawn for this case study: Büro 1/2, Besprechung, notwendiger Flur, Treppenraum, Aufzug (Fahrschacht), Technikraum, Lagerraum; 9 doors D1–D9, numbered only — the plan deliberately does NOT print any fire ratings, so the ratings must come from the code. | 1 chunk (Gemini vision description, verified 3× before upload: all 9 doors with correct connections, all rooms) |
 
-Workspace: `henn-case-study` (the Studio library is keyed to a per-browser workspace ID — see RUNBOOK.md).
+Workspace: `building-codes-demo` (the Studio library is keyed to a per-browser workspace ID — see RUNBOOK.md).
 
 ## Demo questions
 
@@ -26,7 +26,7 @@ Workspace: `henn-case-study` (the Studio library is keyed to a per-browser works
 - Image chunks are vision-model descriptions embedded as text, cited as image sources — not native image tokens at query time.
 - Present as a prototype: ingestion of real project archives, permissions, and evaluation on real architect questions are the open next steps.
 
-## Verification — 19 Nov 2026, live deployment (workspace `henn-case-study`)
+## Verification — 19 Nov 2026, live deployment (workspace `building-codes-demo`)
 
 Indexing: excerpt PDF 71 chunks (45 s upload), plan PNG 1 chunk (132 s — includes the vision call), § 2 text file 2 chunks.
 
