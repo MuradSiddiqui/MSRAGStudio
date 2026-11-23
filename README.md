@@ -148,3 +148,19 @@ The Studio workspace `henn-case-study` is preloaded with an excerpt of the offic
 Demo questions: which doors in this plan must be fire-resistant or smoke-tight (Multimodal), the same as a list-all question with the coverage report (Agentic), table-of-contents navigation (STAIR), a Gebäudeklasse classification (§ 2 Abs. 3), and an out-of-corpus question the system must decline (Großgaragen).
 
 Corpus notes, measured verification results and the demo runbook live in [`case-study/`](case-study/CASE-STUDY.md) and [`case-study/RUNBOOK.md`](case-study/RUNBOOK.md). Prototype, not production software.
+
+### Try it yourself
+
+All demo files are in the [`case-study/`](case-study/) folder:
+
+- [Building-code excerpt, MBO § 2 and §§ 26-39 (PDF)](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/MBO-Auszug-Gebaeudeklassen-Brandschutz.pdf)
+- [Ground-floor plan with doors D1-D9 (PNG)](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/Grundriss-Erdgeschoss.png)
+- [Door rules as cleaned text, §§ 35, 36 and 39](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/Tueren-Schluesselregeln-MBO.txt)
+- [§ 2 building classes as text](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/Gebaeudeklassen-MBO-Par2.txt)
+- [Full case-study write-up](https://github.com/MuradSiddiqui/MSRAGStudio/blob/main/case-study/CASE-STUDY.md)
+
+1. Open the live Studio: https://ms-rag-studio-muradsiddiqui.vercel.app/studio
+2. Upload the excerpt PDF and the plan PNG.
+3. Select **Multimodal** and ask: "Welche Türen in diesem Grundriss müssen feuerhemmend oder rauchdicht sein?"
+
+Or upload your own guideline document and your own plan export, and ask your own question. Every answer is grounded in your documents and cited to page, section or image.

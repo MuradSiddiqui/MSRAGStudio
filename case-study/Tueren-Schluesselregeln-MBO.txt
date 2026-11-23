@@ -1,0 +1,20 @@
+Musterbauordnung (MBO) — Schlüsselregeln für Türen und Abschlüsse
+(Wortlaut der genannten Absätze; Bereinigung der Texterkennung des PDF)
+
+§ 35 Notwendige Treppenräume, Ausgänge
+(6) In notwendigen Treppenräumen müssen Öffnungen
+1. zu Kellergeschossen, zu nicht ausgebauten Dachräumen, Werkstätten, Läden, Lager- und ähnlichen Räumen sowie zu sonstigen Räumen und Nutzungseinheiten mit einer Fläche von mehr als 200 m², ausgenommen Wohnungen, mindestens feuerhemmende, rauchdichte und selbstschließende Abschlüsse,
+2. zu notwendigen Fluren rauchdichte und selbstschließende Abschlüsse,
+3. zu sonstigen Räumen und Nutzungseinheiten mindestens dicht- und selbstschließende Abschlüsse
+haben.
+
+§ 36 Notwendige Flure, offene Gänge
+(3) Notwendige Flure sind durch nichtabschließbare, rauchdichte und selbstschließende Abschlüsse in Rauchabschnitte zu unterteilen. Die Rauchabschnitte sollen nicht länger als 30 m sein. Die Abschlüsse sind bis an die Rohdecke zu führen; sie dürfen bis an die Unterdecke der Flure geführt werden, wenn die Unterdecke feuerhemmend ist. Notwendige Flure mit nur einer Fluchtrichtung, die zu einem Sicherheitstreppenraum führen, dürfen nicht länger als 15 m sein.
+(4) Die Wände notwendiger Flure müssen als raumabschließende Bauteile feuerhemmend, in Kellergeschossen, deren tragende und aussteifende Bauteile feuerbeständig sein müssen, feuerbeständig sein. Türen in diesen Wänden müssen dicht schließen; Öffnungen zu Lagerbereichen im Kellergeschoss müssen feuerhemmende, dicht- und selbstschließende Abschlüsse haben.
+
+§ 39 Aufzüge
+(2) Die Fahrschachtwände müssen als raumabschließende Bauteile
+1. in Gebäuden der Gebäudeklasse 5 feuerbeständig und aus nichtbrennbaren Baustoffen,
+2. in Gebäuden der Gebäudeklasse 4 hochfeuerhemmend,
+3. in Gebäuden der Gebäudeklasse 3 feuerhemmend
+sein; Fahrschachtwände aus brennbaren Baustoffen müssen schachtseitig eine Bekleidung aus nichtbrennbaren Baustoffen in ausreichender Dicke haben. Fahrschachttüren und andere Öffnungen in Fahrschachtwänden mit erforderlicher Feuerwiderstandsfähigkeit sind so herzustellen, dass die Anforderungen nach Absatz 1 Satz 1 nicht beeinträchtigt werden.
